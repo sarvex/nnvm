@@ -12,6 +12,7 @@ To run this notebook, you need to install tvm and nnvm following
 Notice that you need to build tvm with cuda and llvm.
 """
 
+
 ######################################################################
 # Overview for Supported Hardware Backend of TVM
 # -----------------------------
@@ -116,7 +117,7 @@ input_data = tvm.nd.array(np.random.uniform(size=data_shape).astype("float32"))
 module.run(data=input_data)
 out = module.get_output(0, out=tvm.nd.empty(out_shape))
 # Print first 10 elements of output
-print(out.asnumpy()[0][0:10])
+print(out.asnumpy()[0][:10])
 
 ######################################################################
 # Compile and Deploy the Model to Raspberry Pi Remotely with RPC
@@ -185,7 +186,7 @@ module.run()
 
 out = module.get_output(0, out=tvm.nd.empty(out_shape, ctx=ctx))
 # Print first 10 elements of output
-print(out.asnumpy()[0][0:10])
+print(out.asnumpy()[0][:10])
 
 if not use_rasp:
     # terminate the local server

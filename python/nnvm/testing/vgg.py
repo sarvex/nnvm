@@ -28,14 +28,21 @@ def get_feature(internel_layer, layers, filters, batch_norm=False):
     for i, num in enumerate(layers):
         for j in range(num):
             internel_layer = sym.conv2d(
-                data=internel_layer, kernel_size=(3, 3), padding=(1, 1),
-                channels=filters[i], name="conv%s_%s"%(i + 1, j + 1))
+                data=internel_layer,
+                kernel_size=(3, 3),
+                padding=(1, 1),
+                channels=filters[i],
+                name=f"conv{i + 1}_{j + 1}",
+            )
             if batch_norm:
-                internel_layer = sym.batch_norm(
-                    data=internel_layer, name="bn%s_%s" %(i + 1, j + 1))
-            internel_layer = sym.relu(data=internel_layer, name="relu%s_%s" %(i + 1, j + 1))
+                internel_layer = sym.batch_norm(data=internel_layer, name=f"bn{i + 1}_{j + 1}")
+            internel_layer = sym.relu(data=internel_layer, name=f"relu{i + 1}_{j + 1}")
         internel_layer = sym.max_pool2d(
-            data=internel_layer, pool_size=(2, 2), strides=(2, 2), name="pool%s"%(i + 1))
+            data=internel_layer,
+            pool_size=(2, 2),
+            strides=(2, 2),
+            name=f"pool{i + 1}",
+        )
     return internel_layer
 
 def get_classifier(input_data, num_classes):
@@ -47,8 +54,7 @@ def get_classifier(input_data, num_classes):
     fc7 = sym.dense(data=drop6, units=4096, name="fc7")
     relu7 = sym.relu(data=fc7, name="relu7")
     drop7 = sym.dropout(data=relu7, rate=0.5, name="drop7")
-    fc8 = sym.dense(data=drop7, units=num_classes, name="fc8")
-    return fc8
+    return sym.dense(data=drop7, units=num_classes, name="fc8")
 
 def get_symbol(num_classes, num_layers=11, batch_norm=False):
     """
@@ -66,13 +72,12 @@ def get_symbol(num_classes, num_layers=11, batch_norm=False):
                 16: ([2, 2, 3, 3, 3], [64, 128, 256, 512, 512]),
                 19: ([2, 2, 4, 4, 4], [64, 128, 256, 512, 512])}
     if num_layers not in vgg_spec:
-        raise ValueError("Invalide num_layers {}. Choices are 11,13,16,19.".format(num_layers))
+        raise ValueError(f"Invalide num_layers {num_layers}. Choices are 11,13,16,19.")
     layers, filters = vgg_spec[num_layers]
     data = sym.Variable(name="data")
     feature = get_feature(data, layers, filters, batch_norm)
     classifier = get_classifier(feature, num_classes)
-    symbol = sym.softmax(data=classifier, name='softmax')
-    return symbol
+    return sym.softmax(data=classifier, name='softmax')
 
 def get_workload(batch_size, num_classes=1000, image_shape=(3, 224, 224),
                  dtype="float32", **kwargs):

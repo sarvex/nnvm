@@ -31,14 +31,23 @@ def get_sources(def_file):
 sources = get_sources(sys.argv[1])
 
 def find_source(name, start):
-    candidates = []
-    for x in sources:
-        if x == name or x.endswith('/' + name): candidates.append(x)
-    if not candidates: return ''
-    if len(candidates) == 1: return candidates[0]
-    for x in candidates:
-        if x.split('/')[1] == start.split('/')[1]: return x
-    return ''
+    if candidates := [
+        x for x in sources if x == name or x.endswith(f'/{name}')
+    ]:
+        return (
+            candidates[0]
+            if len(candidates) == 1
+            else next(
+                (
+                    x
+                    for x in candidates
+                    if x.split('/')[1] == start.split('/')[1]
+                ),
+                '',
+            )
+        )
+    else:
+        return ''
 
 
 re1 = re.compile('<([./a-zA-Z0-9_-]*)>')

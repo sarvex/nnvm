@@ -84,7 +84,7 @@ def compute_conv2d(attrs, inputs, _):
     groups = attrs.get_int("groups")
     channels = attrs.get_int("channels")
     layout = attrs["layout"]
-    assert layout == "NCHW" or layout == "NHWC"
+    assert layout in ["NCHW", "NHWC"]
     (dilation_h, dilation_w) = dilation
     if dilation_h < 1 or dilation_w < 1:
         raise ValueError("dilation should be positive value")
@@ -114,10 +114,11 @@ def schedule_conv2d(attrs, outs, target):
     groups = attrs.get_int("groups")
     layout = attrs["layout"]
     with tvm.target.create(target):
-        if groups == 1 and layout == "NCHW":
-            return topi.generic.schedule_conv2d_nchw(outs)
-        elif groups == 1 and layout == "NHWC":
-            return topi.generic.schedule_conv2d_nhwc(outs)
+        if groups == 1:
+            if layout == "NCHW":
+                return topi.generic.schedule_conv2d_nchw(outs)
+            elif layout == "NHWC":
+                return topi.generic.schedule_conv2d_nhwc(outs)
         return topi.generic.schedule_depthwise_conv2d_nchw(outs)
 
 @reg.register_alter_op_layout("conv2d")
@@ -238,9 +239,8 @@ reg.register_pattern("global_avg_pool2d", OpPattern.OUT_ELEMWISE_FUSABLE)
 def compute_upsampling(attrs, inputs, _):
     """Compute definition of upsampling"""
     scale = attrs.get_int("scale")
-    layout = attrs["layout"]
-    if layout:
-        assert layout == "NCHW" or layout == "NHWC"
+    if layout := attrs["layout"]:
+        assert layout in ["NCHW", "NHWC"]
         return topi.nn.upsampling(inputs[0], scale, layout)
     return topi.nn.upsampling(inputs[0], scale)
 

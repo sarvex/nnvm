@@ -228,7 +228,7 @@ module.run()
 out = module.get_output(0, tvm.nd.empty(out_shape, ctx=ctx))
 # get top1 result
 top1 = np.argmax(out.asnumpy())
-print('TVM prediction top-1: {}'.format(synset[top1]))
+print(f'TVM prediction top-1: {synset[top1]}')
 
 if not use_mali:
     # terminate the local server

@@ -26,9 +26,9 @@ import numpy as np
 def download(url, path, overwrite=False):
     import os
     if os.path.isfile(path) and not overwrite:
-        print('File {} exists, skip.'.format(path))
+        print(f'File {path} exists, skip.')
         return
-    print('Downloading from url {} to {}'.format(url, path))
+    print(f'Downloading from url {url} to {path}')
     try:
         import urllib.request
         urllib.request.urlretrieve(url, path)
@@ -107,8 +107,8 @@ synset_name = 'synset.txt'
 download(synset_url, synset_name)
 with open(synset_name) as f:
     synset = eval(f.read())
-print('NNVM top-1 id: {}, class name: {}'.format(top1_tvm, synset[top1_tvm]))
+print(f'NNVM top-1 id: {top1_tvm}, class name: {synset[top1_tvm]}')
 # confirm correctness with keras output
 keras_out = keras_resnet50.predict(data.transpose([0, 2, 3, 1]))
 top1_keras = np.argmax(keras_out)
-print('Keras top-1 id: {}, class name: {}'.format(top1_keras, synset[top1_keras]))
+print(f'Keras top-1 id: {top1_keras}, class name: {synset[top1_keras]}')

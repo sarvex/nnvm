@@ -28,8 +28,7 @@ def get_symbol(num_classes=1000):
     fc2 = sym.dense(data=act1, name='fc2', units=64)
     act2 = sym.relu(data=fc2, name='relu2')
     fc3 = sym.dense(data=act2, name='fc3', units=num_classes)
-    mlp = sym.softmax(data=fc3, name='softmax')
-    return mlp
+    return sym.softmax(data=fc3, name='softmax')
 
 def get_workload(batch_size, num_classes=1000, image_shape=(3, 224, 224), dtype="float32"):
     """Get benchmark workload for a simple multilayer perceptron

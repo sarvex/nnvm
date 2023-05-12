@@ -13,11 +13,11 @@ def helper(symbol, inputs, params, update_func, run_times, target, ctx, dtype="f
     np_inputs = {}
     params_dict = {}
     for (name, shape, s) in inputs:
-        ishapes.update({name: shape})
-        np_inputs.update({name: np.random.uniform(size=shape).astype(dtype)})
+        ishapes[name] = shape
+        np_inputs[name] = np.random.uniform(size=shape).astype(dtype)
     for (name, shape, s) in params:
-        np_inputs.update({name: np.random.uniform(size=shape).astype(dtype)})
-        params_dict.update({name: np_inputs[name]})
+        np_inputs[name] = np.random.uniform(size=shape).astype(dtype)
+        params_dict[name] = np_inputs[name]
 
     graph, lib, rt_params = nnvm.compiler.build(symbol, target, shape=ishapes)
     m = graph_runtime.create(graph, lib, ctx)

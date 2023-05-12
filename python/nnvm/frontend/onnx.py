@@ -27,14 +27,13 @@ class OnnxOpConverter(object):
             int(d.replace('_impl_v', '')) for d in dir(cls) if '_impl_v' in d
         ]
         versions = sorted(versions + [opset])
-        version = versions[
-            max([i for i, v in enumerate(versions) if v == opset]) - 1]
-        if hasattr(cls, '_impl_v{}'.format(version)):
-            return getattr(cls, '_impl_v{}'.format(version))
+        version = versions[max(i for i, v in enumerate(versions) if v == opset) - 1]
+        if hasattr(cls, f'_impl_v{version}'):
+            return getattr(cls, f'_impl_v{version}')
         else:
             raise NotImplementedError(
-                'opset version {} of {} not implemented'.format(
-                    version, cls.__name__))
+                f'opset version {version} of {cls.__name__} not implemented'
+            )
 
 
 class Elemwise(OnnxOpConverter):
@@ -48,15 +47,14 @@ class Elemwise(OnnxOpConverter):
 
         def _impl(attr):
             if attr.get('broadcast', 0):
-                return 'broadcast_' + suffix
-            return 'elemwise_' + suffix
+                return f'broadcast_{suffix}'
+            return f'elemwise_{suffix}'
 
         return _impl
 
     @classmethod
     def _impl_v1(cls, inputs, attr, params):
-        assert len(inputs) == 2, "Math op take 2 inputs, {} given".format(
-            len(inputs))
+        assert len(inputs) == 2, f"Math op take 2 inputs, {len(inputs)} given"
         op_name = cls._math_name_picker(cls.name)(attr)
         axis = int(attr.get('axis', 0))
         conv_ops = ["conv2d", "conv2d_transpose"]
@@ -173,8 +171,7 @@ class Gemm(OnnxOpConverter):
 
     @classmethod
     def _impl_v1(cls, inputs, attr, params):
-        assert len(inputs) == 3, "Gemm op take 3 inputs, {} given".format(
-            len(inputs))
+        assert len(inputs) == 3, f"Gemm op take 3 inputs, {len(inputs)} given"
         # Y = alpha * A * B + beta * C
         alpha = float(attr.get('alpha', 1.0))
         beta = float(attr.get('beta', 1.0))
@@ -230,8 +227,7 @@ class Prelu(OnnxOpConverter):
 
     @classmethod
     def _impl_v1(cls, inputs, attr, params):
-        assert len(inputs) == 2, "Prelu need 2 inputs, {} given".format(
-            len(inputs))
+        assert len(inputs) == 2, f"Prelu need 2 inputs, {len(inputs)} given"
         channels = _infer_channels(inputs[1], params, False)
         if channels == 1:
             return inputs[0] * inputs[1]
@@ -335,27 +331,22 @@ class ImageScaler(OnnxOpConverter):
         bias_attr = attr['bias']
         bias = SymbolTable().new_const(np.array(bias_attr).reshape([3, 1, 1]))
         scaledChannel = _sym.__mul_scalar__(inputs[0], scalar=channelScale)
-        ret = _sym.broadcast_add(scaledChannel, bias)
-        return ret
+        return _sym.broadcast_add(scaledChannel, bias)
 
 
 def _revert_caffe2_pad(attr):
     """Caffe2 require two times the normal padding."""
     if len(attr) == 4:
         attr = attr[:2]
-    elif len(attr) == 2:
-        pass
-    else:
-        raise ValueError("Invalid caffe2 type padding: {}".format(attr))
+    elif len(attr) != 2:
+        raise ValueError(f"Invalid caffe2 type padding: {attr}")
     return attr
 
 
 def _broadcast_constraint():
 
     def _broadcast_check(attrs):
-        if attrs.get('axis', None):
-            return False
-        return True
+        return not attrs.get('axis', None)
 
     return _broadcast_check, "Specifying broadcast axis not allowed."
 
@@ -365,7 +356,7 @@ def _dimension_picker(prefix, surfix=''):
     def _impl(attr):
         kernel = attr['kernel_shape']
         if len(kernel) == 2:
-            return prefix + '2d' + surfix
+            return f'{prefix}2d{surfix}'
         else:
             raise NotImplementedError("Only 2d kernel supported.")
 
@@ -375,9 +366,7 @@ def _dimension_picker(prefix, surfix=''):
 def _dimension_constraint():
 
     def _dim_check(attrs):
-        if len(attrs['kernel_shape']) == 2:
-            return True
-        return False
+        return len(attrs['kernel_shape']) == 2
 
     return _dim_check, "Only 2d kernel supported."
 
@@ -389,8 +378,7 @@ def _infer_channels(inputs, params, transpose=False):
     g = _graph.create(inputs)
     shape_dict = {k: v.shape for k, v in params.items()}
     _, out_shapes = graph_util.infer_shape(g, **shape_dict)
-    channels = out_shapes[0][0] if not transpose else out_shapes[0][1]
-    return channels
+    return out_shapes[0][0] if not transpose else out_shapes[0][1]
 
 
 def _fully_connected(opset):
@@ -572,17 +560,14 @@ class GraphProto(object):
             inputs = [self._nodes[self._renames.get(i, i)] for i in node.input]
             op = self._convert_operator(op_name, inputs, attr, opset)
             node_output = self._fix_outputs(op_name, node.output)
-            assert len(node_output) == len(op.list_output_names()), (
-                "Number of output mismatch {} vs {} in {}.".format(
-                    len(node_output), len(op.list_output_names()), op_name))
+            assert len(node_output) == len(
+                op.list_output_names()
+            ), f"Number of output mismatch {len(node_output)} vs {len(op.list_output_names())} in {op_name}."
             for k, i in zip(list(node_output), range(len(node_output))):
                 self._nodes[k] = op[i]
         # now return the outputs
         out = [self._nodes[self._parse_value_proto(i)] for i in graph.output]
-        if len(out) > 1:
-            out = _sym.Group(out)
-        else:
-            out = out[0]
+        out = _sym.Group(out) if len(out) > 1 else out[0]
         return out, self._params
 
     def _parse_value_proto(self, value_proto):
@@ -598,8 +583,7 @@ class GraphProto(object):
         try:
             from onnx.numpy_helper import to_array
         except ImportError as e:
-            raise ImportError(
-                "Unable to import onnx which is required {}".format(e))
+            raise ImportError(f"Unable to import onnx which is required {e}")
         np_array = to_array(tensor_proto).reshape(tuple(tensor_proto.dims))
         return tvm.nd.array(np_array)
 
@@ -616,14 +600,12 @@ class GraphProto(object):
                     attrs[a.name] = tuple(getattr(a, f))
             for f in ['t', 'g']:
                 if a.HasField(f):
-                    raise NotImplementedError(
-                        "Filed {} is not supported in nnvm.".format(f))
+                    raise NotImplementedError(f"Filed {f} is not supported in nnvm.")
             for f in ['tensors', 'graphs']:
                 if list(getattr(a, f)):
-                    raise NotImplementedError(
-                        "Filed {} is not supported in nnvm.".format(f))
+                    raise NotImplementedError(f"Filed {f} is not supported in nnvm.")
             if a.name not in attrs:
-                raise ValueError("Cannot parse attribute: \n{}\n.".format(a))
+                raise ValueError(f"Cannot parse attribute: \n{a}\n.")
         return attrs
 
     def _convert_operator(self,
@@ -666,8 +648,7 @@ class GraphProto(object):
         elif op_name in convert_map:
             sym = convert_map[op_name](inputs, attrs, self._params)
         else:
-            raise NotImplementedError(
-                "Operator {} not implemented.".format(op_name))
+            raise NotImplementedError(f"Operator {op_name} not implemented.")
         return sym
 
     def _fix_outputs(self, op_name, outputs):

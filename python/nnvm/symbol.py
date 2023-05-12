@@ -53,7 +53,7 @@ class Symbol(SymbolBase):
         elif isinstance(other, _Number):
             return __add_scalar__(self, scalar=other)
         else:
-            raise TypeError("type %s not supported" % str(type(other)))
+            raise TypeError(f"type {str(type(other))} not supported")
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -65,13 +65,13 @@ class Symbol(SymbolBase):
         if isinstance(other, _Number):
             return __sub_scalar__(self, scalar=other)
         else:
-            raise TypeError('type %s not supported' % str(type(other)))
+            raise TypeError(f'type {str(type(other))} not supported')
 
     def __rsub__(self, other):
         if isinstance(other, _Number):
             return __rsub_scalar__(self, scalar=other)
         else:
-            raise TypeError('type %s not supported' % str(type(other)))
+            raise TypeError(f'type {str(type(other))} not supported')
 
     def __mul__(self, other):
         """x.__mul__(y) <=> x*y"""
@@ -80,7 +80,7 @@ class Symbol(SymbolBase):
         if isinstance(other, _Number):
             return __mul_scalar__(self, scalar=other)
         else:
-            raise TypeError('type %s not supported' % str(type(other)))
+            raise TypeError(f'type {str(type(other))} not supported')
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -92,13 +92,13 @@ class Symbol(SymbolBase):
         if isinstance(other, _Number):
             return __div_scalar__(self, scalar=other)
         else:
-            raise TypeError('type %s not supported' % str(type(other)))
+            raise TypeError(f'type {str(type(other))} not supported')
 
     def __rdiv__(self, other):
         if isinstance(other, _Number):
             return __rdiv_scalar__(self, scalar=other)
         else:
-            raise TypeError('type %s not supported' % str(type(other)))
+            raise TypeError(f'type {str(type(other))} not supported')
 
     def __truediv__(self, other):
         return self.__div__(other)
@@ -113,13 +113,13 @@ class Symbol(SymbolBase):
         if isinstance(other, _Number):
             return __pow_scalar__(self, scalar=other)
         else:
-            raise TypeError('type %s not supported' % str(type(other)))
+            raise TypeError(f'type {str(type(other))} not supported')
 
     def __rpow__(self, other):
         if isinstance(other, _Number):
             return __rpow_scalar__(self, scalar=other)
         else:
-            raise TypeError('type %s not supported' % str(type(other)))
+            raise TypeError(f'type {str(type(other))} not supported')
 
     def __neg__(self):
         """x.__neg__() <=> -x"""
@@ -173,9 +173,7 @@ class Symbol(SymbolBase):
         success = _ctypes.c_int()
         _check_call(_LIB.NNSymbolGetAttr(
             self.handle, _base.c_str(key), _ctypes.byref(ret), _ctypes.byref(success)))
-        if success.value != 0:
-            return _base.py_str(ret.value)
-        return None
+        return _base.py_str(ret.value) if success.value != 0 else None
 
     def list_attr(self, recursive=False):
         """Get all attributes from the symbol.
@@ -216,9 +214,7 @@ class Symbol(SymbolBase):
         _check_call(_LIB.NNSymbolGetChildren(
             self.handle, _ctypes.byref(handle)))
         ret = Symbol(handle=handle)
-        if not ret.list_output_names():
-            return None
-        return ret
+        return None if not ret.list_output_names() else ret
 
     def _get_list_copt(self, option):
         """internal function to get list option"""
@@ -346,8 +342,7 @@ def Variable(name, init=None, **kwargs):
     _base.check_call(_LIB.NNSymbolCreateVariable(
         _base.c_str(name), _ctypes.byref(handle)))
     ret = Symbol(handle)
-    attr = AttrScope.current.get(kwargs)
-    if attr:
+    if attr := AttrScope.current.get(kwargs):
         ret._set_attr(**attr)
     if init is not None:
         if not isinstance(init, (Symbol, np.ndarray)):

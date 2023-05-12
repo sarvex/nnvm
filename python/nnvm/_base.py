@@ -188,12 +188,11 @@ def ctypes2docstring(num_args, arg_names, arg_types, arg_descs, remove_dup=True)
             continue
         param_keys.add(key)
         type_info = py_str(arg_types[i])
-        ret = '%s : %s' % (key, type_info)
+        ret = f'{key} : {type_info}'
         if arg_descs[i]:
             ret += '\n    ' + py_str(arg_descs[i])
         param_str.append(ret)
     doc_str = ('Parameters\n' +
                '----------\n' +
                '%s\n')
-    doc_str = doc_str % ('\n'.join(param_str))
-    return doc_str
+    return doc_str % ('\n'.join(param_str))

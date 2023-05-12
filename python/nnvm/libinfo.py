@@ -48,17 +48,22 @@ def find_lib_path():
         else:
             dll_path.append(os.path.join(base_path, '../../build', vs_configuration))
             dll_path.append(os.path.join(base_path, '../../windows', vs_configuration))
-        dll_path = [os.path.join(p, '%s.dll' % lib_name) for p in dll_path]
+        dll_path = [os.path.join(p, f'{lib_name}.dll') for p in dll_path]
     elif sys.platform.startswith('darwin'):
-        dll_path = [os.path.join(p, '%s.dylib' % lib_name) for p in dll_path]
+        dll_path = [os.path.join(p, f'{lib_name}.dylib') for p in dll_path]
     else:
-        dll_path = [os.path.join(p, '%s.so' % lib_name) for p in dll_path]
+        dll_path = [os.path.join(p, f'{lib_name}.so') for p in dll_path]
 
-    lib_path = [p for p in dll_path if os.path.exists(p) and os.path.isfile(p)]
-    if not lib_path:
-        raise RuntimeError('Cannot find the files.\n' +
-                           'List of candidates:\n' + str('\n'.join(dll_path)))
-    return lib_path
+    if lib_path := [
+        p for p in dll_path if os.path.exists(p) and os.path.isfile(p)
+    ]:
+        return lib_path
+    else:
+        raise RuntimeError(
+            'Cannot find the files.\n'
+            + 'List of candidates:\n'
+            + '\n'.join(dll_path)
+        )
 
 
 # current version

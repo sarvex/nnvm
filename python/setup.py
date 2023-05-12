@@ -7,28 +7,6 @@ def config_cython():
     # temporary disable cython for now
     # as NNVM uses local DLL build
     return []
-    try:
-        from Cython.Build import cythonize
-        from distutils.extension import Extension
-        if sys.version_info >= (3, 0):
-            subdir = "_cy3"
-        else:
-            subdir = "_cy2"
-        ret = []
-        path = "nnvm/cython"
-
-        for fn in os.listdir(path):
-            if not fn.endswith(".pyx"):
-                continue
-            ret.append(Extension(
-                "nnvm/%s/%s" % (subdir, fn[:-4]),
-                ["nnvm/cython/%s" % fn],
-                include_dirs=["../include/"],
-                language="c++"))
-        return cythonize(ret)
-    except:
-        print("Cython is not installed, will compile without cython module")
-        return []
 
 # We can not import `libinfo.py` in setup.py directly since __init__.py
 # Will be invoked which introduces dependences

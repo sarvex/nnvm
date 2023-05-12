@@ -16,8 +16,7 @@ from tvm.contrib import graph_runtime as runtime
 
 @tvm.register_func
 def tvm_callback_cuda_compile(code):
-    ptx = nvcc.compile_cuda(code, target="ptx")
-    return ptx
+    return nvcc.compile_cuda(code, target="ptx")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -47,12 +46,9 @@ def main():
         net, params = nnvm.testing.mobilenet.get_workload(
             batch_size=1, image_shape=image_shape)
     else:
-        raise ValueError('no benchmark prepared for {}.'.format(args.model))
+        raise ValueError(f'no benchmark prepared for {args.model}.')
 
-    if args.target == "cuda":
-        unroll = 1400
-    else:
-        unroll = 128
+    unroll = 1400 if args.target == "cuda" else 128
     with nnvm.compiler.build_config(opt_level=opt_level):
         with tvm.build_config(auto_unroll_max_step=unroll,
                               unroll_explicit=(args.target != "cuda")):
@@ -67,7 +63,7 @@ def main():
     out = module.get_output(0, tvm.nd.empty(out_shape))
     out.asnumpy()
 
-    print('benchmark args: {}'.format(args))
+    print(f'benchmark args: {args}')
     ftimer = module.module.time_evaluator("run", ctx, num_iter)
     for i in range(args.repeat):
         prof_res = ftimer()

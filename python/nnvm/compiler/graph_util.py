@@ -89,9 +89,8 @@ def check_graph_equal(grapha, graphb, compare_variable_attrs=False):
     ValueError
         ValueError is raised with error message when graph not equal
     """
-    err = _deep_compare(grapha, graphb, compare_variable_attrs)
-    if err:
-        raise ValueError("Graph compare error: " + err)
+    if err := _deep_compare(grapha, graphb, compare_variable_attrs):
+        raise ValueError(f"Graph compare error: {err}")
 
 def get_gradient_graph(ys, xs, grad_ys=None):
     """Create gradient graph of ys with respect to xs.
@@ -144,5 +143,4 @@ def gradients(ys, xs, grad_ys=None):
     grad_g = get_gradient_graph(ys, xs, grad_ys)
     nx = len(Group(xs).list_output_names()) \
         if isinstance(xs, list) else len(xs.list_output_names())
-    ret = [grad_g.symbol[i] for i in range(nx)]
-    return ret
+    return [grad_g.symbol[i] for i in range(nx)]

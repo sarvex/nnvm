@@ -8,24 +8,24 @@ from .. import symbol as _sym
 __all__ = ['from_mxnet']
 
 def _get_nnvm_op(op_name):
-    op = getattr(_sym, op_name)
-    if not op:
-        raise RuntimeError("Unable to map op_name {} to nnvm.sym".format(op_name))
-    return op
+    if op := getattr(_sym, op_name):
+        return op
+    else:
+        raise RuntimeError(f"Unable to map op_name {op_name} to nnvm.sym")
 
 def _required_attr(attr, key):
     assert isinstance(attr, dict)
     if key not in attr:
-        raise AttributeError("Required attribute {} not found.".format(key))
+        raise AttributeError(f"Required attribute {key} not found.")
     return attr[key]
 
 def _raise_not_supported(attr, op='nnvm'):
-    err = "{} is not supported in {}.".format(attr, op)
+    err = f"{attr} is not supported in {op}."
     raise NotImplementedError(err)
 
 def _warn_not_used(attr, op='nnvm'):
     import warnings
-    err = "{} is ignored in {}.".format(attr, op)
+    err = f"{attr} is ignored in {op}."
     warnings.warn(err)
 
 def _parse_tshape(tshape):
@@ -85,7 +85,7 @@ def _conv2d(inputs, attrs):
         _raise_not_supported('non 2d kernel', 'conv2d')
     layout = attrs.get('layout', 'NCHW')
     if layout not in ['NCHW', 'NHWC']:
-        _raise_not_supported('layout: ' + layout, 'conv2d')
+        _raise_not_supported(f'layout: {layout}', 'conv2d')
     if 'kernel_layout' in attrs:
         kernel_layout = attrs['kernel_layout']
     else:
@@ -110,7 +110,7 @@ def _conv2d_transpose(inputs, attrs):
         _raise_not_supported('non-2d kernel', 'conv2d_transpose')
     layout = attrs.get('layout', 'NCHW')
     if layout not in ['NCHW', 'NHWC']:
-        _raise_not_supported('layout: ' + layout, 'conv2d_transpose')
+        _raise_not_supported(f'layout: {layout}', 'conv2d_transpose')
     if 'kernel_layout' in attrs:
         kernel_layout = attrs['kernel_layout']
     else:
@@ -165,7 +165,7 @@ def _leaky_relu(inputs, attrs):
         op_name, new_attrs = 'leaky_relu', {'alpha': str(slope)}
         sym = _get_nnvm_op(op_name)(*inputs, **new_attrs)
     else:
-        _raise_not_supported('act_type: ' + act_type)
+        _raise_not_supported(f'act_type: {act_type}')
     return sym
 
 def _activations(inputs, attrs):
@@ -176,7 +176,7 @@ def _activations(inputs, attrs):
     elif act_type == 'softrelu':
         sym = _sym.log((1 + _sym.exp(*inputs)))
     else:
-        _raise_not_supported('act_type: ' + act_type)
+        _raise_not_supported(f'act_type: {act_type}')
     return sym
 
 def _reshape(inputs, attrs):
@@ -292,14 +292,12 @@ def _convert_symbol(op_name, inputs, attrs,
     elif op_name in convert_map:
         sym = convert_map[op_name](inputs, attrs)
     else:
-        _raise_not_supported('Operator: ' + op_name)
+        _raise_not_supported(f'Operator: {op_name}')
     return sym
 
 def _as_list(arr):
     """Force being a list, ignore if already is."""
-    if isinstance(arr, list):
-        return arr
-    return [arr]
+    return arr if isinstance(arr, list) else [arr]
 
 def _from_mxnet_impl(symbol, graph):
     """Convert mxnet symbol to nnvm implementation.
@@ -365,28 +363,27 @@ def from_mxnet(symbol, arg_params=None, aux_params=None):
     try:
         import mxnet as mx
     except ImportError as e:
-        raise ImportError('{}. MXNet is required to parse symbols.'.format(e))
+        raise ImportError(f'{e}. MXNet is required to parse symbols.')
 
     if isinstance(symbol, mx.sym.Symbol):
         sym = _from_mxnet_impl(symbol, {})
-        params = {}
         arg_params = arg_params if arg_params else {}
         aux_params = aux_params if aux_params else {}
-        for k, v in arg_params.items():
-            params[k] = tvm.nd.array(v.asnumpy())
+        params = {k: tvm.nd.array(v.asnumpy()) for k, v in arg_params.items()}
         for k, v in aux_params.items():
             params[k] = tvm.nd.array(v.asnumpy())
     elif isinstance(symbol, mx.gluon.HybridBlock):
         data = mx.sym.Variable('data')
         sym = symbol(data)
         sym = _from_mxnet_impl(sym, {})
-        params = {}
-        for k, v in symbol.collect_params().items():
-            params[k] = tvm.nd.array(v.data().asnumpy())
+        params = {
+            k: tvm.nd.array(v.data().asnumpy())
+            for k, v in symbol.collect_params().items()
+        }
     elif isinstance(symbol, mx.gluon.Block):
         raise NotImplementedError("Only Hybrid Blocks are supported now.")
     else:
-        msg = "mxnet.Symbol or gluon.HybridBlock expected, got {}".format(type(symbol))
+        msg = f"mxnet.Symbol or gluon.HybridBlock expected, got {type(symbol)}"
         raise ValueError(msg)
     if isinstance(sym, list):
         sym = _sym.Group(sym)

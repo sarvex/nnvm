@@ -47,23 +47,20 @@ def _correct_region_boxes(boxes, n, w, h, netw, neth, relative):
 def _overlap(x1, w1, x2, w2):
     l1 = x1 - w1/2
     l2 = x2 - w2/2
-    left = l1 if l1 > l2 else l2
+    left = max(l1, l2)
     r1 = x1 + w1/2
     r2 = x2 + w2/2
-    right = r1 if r1 < r2 else r2
+    right = min(r1, r2)
     return right - left
 
 def _box_intersection(a, b):
     w = _overlap(a.x, a.w, b.x, b.w)
     h = _overlap(a.y, a.h, b.y, b.h)
-    if w < 0 or h < 0:
-        return 0
-    return w*h
+    return 0 if w < 0 or h < 0 else w*h
 
 def _box_union(a, b):
     i = _box_intersection(a, b)
-    u = a.w*a.h + b.w*b.h - i
-    return u
+    return a.w*a.h + b.w*b.h - i
 
 def _box_iou(a, b):
     return _box_intersection(a, b)/_box_union(a, b)
@@ -73,8 +70,11 @@ def get_region_boxes(layer_in, imw, imh, netw, neth, thresh, probs,
     "To get the boxes for the image based on the prediction"
     lw = layer_in.w
     lh = layer_in.h
-    probs = [[0 for i in range(layer_in.classes + 1)] for y in range(lw*lh*layer_in.n)]
-    boxes = [Box(0, 0, 0, 0) for i in range(lw*lh*layer_in.n)]
+    probs = [
+        [0 for _ in range(layer_in.classes + 1)]
+        for _ in range(lw * lh * layer_in.n)
+    ]
+    boxes = [Box(0, 0, 0, 0) for _ in range(lw*lh*layer_in.n)]
     for i in range(lw*lh):
         row = int(i / lw)
         col = int(i % lw)
@@ -107,7 +107,7 @@ def do_nms_sort(boxes, probs, total, classes, thresh):
     "Does the sorting based on the threshold values"
     SortableBbox = namedtuple('SortableBbox', ['index_var', 'class_var', 'probs'])
 
-    s = [SortableBbox(0, 0, []) for i in range(total)]
+    s = [SortableBbox(0, 0, []) for _ in range(total)]
     for i in range(total):
         s[i] = s[i]._replace(index_var=i)
         s[i] = s[i]._replace(class_var=0)
@@ -151,14 +151,10 @@ def draw_detections(im, num, thresh, boxes, probs, names, classes):
             top = int((b.y-b.h/2.)*imh)
             bot = int((b.y+b.h/2.)*imh)
 
-            if left < 0:
-                left = 0
-            if right > imw-1:
-                right = imw-1
-            if top < 0:
-                top = 0
-            if bot > imh-1:
-                bot = imh-1
+            left = max(left, 0)
+            right = min(right, imw-1)
+            top = max(top, 0)
+            bot = min(bot, imh-1)
             _draw_box_width(im, left, top, right, bot, width, red, green, blue)
             label = _get_label(''.join(labelstr), rgb)
             _draw_label(im, top + width, left, label, rgb)
@@ -205,23 +201,18 @@ def _get_color(c, x, max_value):
     i = int(math.floor(ratio))
     j = int(math.ceil(ratio))
     ratio -= i
-    r = (1-ratio) * colors[i][c] + ratio*colors[j][c]
-    return r
+    return (1-ratio) * colors[i][c] + ratio*colors[j][c]
 
 def _draw_box(im, x1, y1, x2, y2, r, g, b):
-    y1 = int(y1)
     y2 = int(y2)
     x1 = int(x1)
     x2 = int(x2)
     ac, ah, aw = im.shape
-    if x1 < 0:
-        x1 = 0
-    if x1 >= aw:
-        y1 = 0
+    x1 = max(x1, 0)
+    y1 = 0 if x1 >= aw else int(y1)
     if y1 >= ah:
         y1 = ah - 1
-    if y2 < 0:
-        y2 = 0
+    y2 = max(y2, 0)
     if y2 >= ah:
         y2 = ah - 1
 

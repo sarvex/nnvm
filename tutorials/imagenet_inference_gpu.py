@@ -22,8 +22,7 @@ import nnvm.testing
 
 @tvm.register_func
 def tvm_callback_cuda_compile(code):
-    ptx = nvcc.compile_cuda(code, target="ptx")
-    return ptx
+    return nvcc.compile_cuda(code, target="ptx")
 
 ######################################################################
 # Prepare the Benchmark

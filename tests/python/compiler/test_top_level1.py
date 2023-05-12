@@ -13,8 +13,8 @@ def helper(symbol, inputs, dtype,
     input_syms = []
     np_inputs = {}
     for (name, shape, s) in inputs:
-        ishapes.update({name: shape})
-        np_inputs.update({name: np.random.uniform(size=shape).astype(dtype)})
+        ishapes[name] = shape
+        np_inputs[name] = np.random.uniform(size=shape).astype(dtype)
         input_syms.append(s)
 
     for target, ctx in ctx_list():
@@ -30,16 +30,16 @@ def helper(symbol, inputs, dtype,
             graph._set_symbol_list_attr("grad_xs", input_syms)
             graph._set_symbol_list_attr("grad_ys_out_grad", sym.Variable("head_grads", shape=y_np.shape))
             graph = graph.apply("Gradient")
-            ishapes.update({"head_grads": y_np.shape})
+            ishapes["head_grads"] = y_np.shape
             graph, lib, _ = nnvm.compiler.build(graph, target, ishapes)
             m = graph_runtime.create(graph, lib, ctx)
             head_grads = np.random.uniform(size=y_np.shape).astype(dtype)
             y_np = np_backward(head_grads=head_grads, **np_inputs)
             b_inputs = {}
             if need_input:
-                b_inputs.update(np_inputs)
+                b_inputs |= np_inputs
             if need_head_grads:
-                b_inputs.update({"head_grads":head_grads})
+                b_inputs["head_grads"] = head_grads
             m.run(**b_inputs)
             for i in range(len(y_np)):
                 out = m.get_output(i, tvm.nd.empty(y_np[i].shape, dtype))
@@ -288,7 +288,7 @@ def verify_concatenate(ishape, axis):
     for target, ctx in ctx_list():
         # set input
         data = []
-        for i, shape in enumerate(ishape):
+        for shape in ishape:
             data.append(np.random.uniform(size=shape).astype(dtype))
         pdict = {"x%d" % i :  v for i, v in enumerate(data)}
         shape = {"x%d" % i :  v.shape for i, v in enumerate(data)}
@@ -329,10 +329,7 @@ def test_split():
 
 def verify_squeeze(dshape, axis):
     x = sym.Variable("x")
-    if axis:
-        y = sym.squeeze(x, axis=axis)
-    else:
-        y = sym.squeeze(x)
+    y = sym.squeeze(x, axis=axis) if axis else sym.squeeze(x)
     y = y + 1
 
     def forward(x):

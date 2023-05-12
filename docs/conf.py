@@ -30,8 +30,8 @@ sys.path.insert(0, os.path.join(curr_path, '../python/'))
 
 # General information about the project.
 project = u'nnvm'
-author = u'%s developers' % project
-copyright = u'2017, %s' % author
+author = f'{project} developers'
+copyright = f'2017, {author}'
 github_doc_root = 'https://github.com/dmlc/nnvm/tree/master/docs/'
 
 # add markdown parser
@@ -135,7 +135,7 @@ if not on_rtd and html_theme == 'rtd':
 # html_static_path = ['_static']
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = project + 'doc'
+htmlhelp_basename = f'{project}doc'
 
 # -- Options for LaTeX output ---------------------------------------------
 latex_elements = {
@@ -144,10 +144,7 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
-latex_documents = [
-  (master_doc, '%s.tex' % project, project,
-   author, 'manual'),
-]
+latex_documents = [(master_doc, f'{project}.tex', project, author, 'manual')]
 
 # hook for doxygen
 def run_doxygen(folder):
@@ -158,9 +155,9 @@ def run_doxygen(folder):
         retcode = subprocess.call("mkdir -p _build/html", shell=True)
         retcode = subprocess.call("cp -rf doxygen/html _build/html/doxygen", shell=True)
         if retcode < 0:
-            sys.stderr.write("doxygen terminated by signal %s" % (-retcode))
+            sys.stderr.write(f"doxygen terminated by signal {-retcode}")
     except OSError as e:
-        sys.stderr.write("doxygen execution failed: %s" % e)
+        sys.stderr.write(f"doxygen execution failed: {e}")
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/{.major}'.format(sys.version_info), None),

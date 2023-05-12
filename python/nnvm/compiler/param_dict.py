@@ -39,8 +39,7 @@ def save_param_dict(params):
     """
     args = []
     for k, v in params.items():
-        args.append(k)
-        args.append(tvm.nd.array(v))
+        args.extend((k, tvm.nd.array(v)))
     return _save_param_dict(*args)
 
 

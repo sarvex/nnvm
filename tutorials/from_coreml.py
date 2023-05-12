@@ -23,9 +23,9 @@ from PIL import Image
 def download(url, path, overwrite=False):
     import os
     if os.path.isfile(path) and not overwrite:
-        print('File {} existed, skip.'.format(path))
+        print(f'File {path} existed, skip.')
         return
-    print('Downloading from url {} to {}'.format(url, path))
+    print(f'Downloading from url {url} to {path}')
     try:
         import urllib.request
         urllib.request.urlretrieve(url, path)

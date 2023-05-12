@@ -11,9 +11,7 @@ def get_sym(layout, kernel_layout, channels):
                       layout=layout, kernel_layout=kernel_layout, use_bias=True)
     data = sym.max_pool2d(data=data, pool_size=(2, 2), strides=(2, 2), layout=layout)
     data = sym.upsampling(data=data, scale=2, layout=layout)
-    softmax_axis = 1
-    if layout == "NHWC":
-        softmax_axis = 3
+    softmax_axis = 3 if layout == "NHWC" else 1
     data = sym.softmax(data=data, axis=softmax_axis)
     return data
 

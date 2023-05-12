@@ -35,16 +35,15 @@ class BuildConfig(object):
     }
     def __init__(self, **kwargs):
         self._old_scope = None
-        for k, _ in kwargs.items():
+        for k in kwargs:
             if k not in BuildConfig.defaults:
                 raise ValueError(
-                    "invalid argument %s, candidates are %s" % (k, BuildConfig.defaults.keys()))
+                    f"invalid argument {k}, candidates are {BuildConfig.defaults.keys()}"
+                )
         self._attr = kwargs
 
     def __getattr__(self, name):
-        if name not in self._attr:
-            return BuildConfig.defaults[name]
-        return self._attr[name]
+        return self._attr[name] if name in self._attr else BuildConfig.defaults[name]
 
     def __enter__(self):
         # pylint: disable=protected-access
@@ -132,8 +131,7 @@ def _update_shape_dtype(shape, dtype, params):
     if isinstance(dtype, str):
         for k, v in params.items():
             if v.dtype != dtype:
-                raise ValueError(
-                    "%s: dtype not expected %s vs %s" % (k, dtype, v.dtype))
+                raise ValueError(f"{k}: dtype not expected {dtype} vs {v.dtype}")
     else:
         dtype = dtype.copy()
         dtype.update({k : str(v.dtype) for k, v in params.items()})
@@ -263,10 +261,7 @@ def build(graph, target=None, shape=None, dtype="float32",
     if not isinstance(dtype, str):
         idtype, _ = graph_util.infer_dtype(graph, **dtype)
         dtype.update(zip(graph.index.input_names, idtype))
-    # Initialize all variables specified in _all_var_init
-    init_var = {}
-    if _all_var_init:
-        init_var = initialize_variables(shape, dtype)
+    init_var = initialize_variables(shape, dtype) if _all_var_init else {}
     # Apply optimization
     with target:
         graph = optimize(graph, shape, dtype, layout)
@@ -410,8 +405,8 @@ def initialize_variables(ishape, idtype):
         graph = _graph.create(init_group_sym)
         with tvm.build_config(auto_unroll_max_step=0):
             init_values = _run_graph(graph, params)
-        init_var.update(dict(zip(symbol_init_dict.keys(), init_values)))
-    init_var.update(const_init_dict)
+        init_var |= dict(zip(symbol_init_dict.keys(), init_values))
+    init_var |= const_init_dict
     for name, data in init_var.items():
         ishape[name] = data.shape
     return init_var

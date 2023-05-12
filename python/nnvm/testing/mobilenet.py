@@ -10,36 +10,52 @@ def conv_block(data, name, channels,
                epsilon=1e-5):
     """Helper function to construct conv-bn-relu"""
     # convolution + bn + relu
-    conv = sym.conv2d(data=data, channels=channels,
-                      kernel_size=kernel_size, strides=strides,
-                      padding=padding, use_bias=False,
-                      layout="NCHW", name=name + "_conv")
-    bn = sym.batch_norm(data=conv, epsilon=epsilon, name=name + "_bn")
-    act = sym.relu(data=bn, name=name + "_relu")
-    return act
+    conv = sym.conv2d(
+        data=data,
+        channels=channels,
+        kernel_size=kernel_size,
+        strides=strides,
+        padding=padding,
+        use_bias=False,
+        layout="NCHW",
+        name=f"{name}_conv",
+    )
+    bn = sym.batch_norm(data=conv, epsilon=epsilon, name=f"{name}_bn")
+    return sym.relu(data=bn, name=f"{name}_relu")
 
 def separable_conv_block(data, name, depthwise_channels,
                          pointwise_channels, kernel_size=(3, 3),
                          downsample=False, padding=(1, 1),
                          epsilon=1e-5):
     """Helper function to get a separable conv block"""
-    if downsample:
-        strides = (2, 2)
-    else:
-        strides = (1, 1)
+    strides = (2, 2) if downsample else (1, 1)
     # depthwise convolution + bn + relu
-    conv1 = sym.conv2d(data=data, channels=depthwise_channels,
-                       groups=depthwise_channels, kernel_size=kernel_size, strides=strides,
-                       padding=padding, use_bias=False, layout="NCHW",
-                       name=name + "_depthwise_conv1")
-    bn1 = sym.batch_norm(data=conv1, epsilon=epsilon, name=name + "_bn1")
-    act1 = sym.relu(data=bn1, name=name + "_relu1")
+    conv1 = sym.conv2d(
+        data=data,
+        channels=depthwise_channels,
+        groups=depthwise_channels,
+        kernel_size=kernel_size,
+        strides=strides,
+        padding=padding,
+        use_bias=False,
+        layout="NCHW",
+        name=f"{name}_depthwise_conv1",
+    )
+    bn1 = sym.batch_norm(data=conv1, epsilon=epsilon, name=f"{name}_bn1")
+    act1 = sym.relu(data=bn1, name=f"{name}_relu1")
     # pointwise convolution + bn + relu
-    conv2 = sym.conv2d(data=act1, channels=pointwise_channels, kernel_size=(1, 1), strides=(1, 1),
-                       padding=(0, 0), use_bias=False, layout="NCHW", name=name + "_conv2")
-    bn2 = sym.batch_norm(data=conv2, epsilon=epsilon, name=name + "_bn2")
-    act2 = sym.relu(data=bn2, name=name + "_relu2")
-    return act2
+    conv2 = sym.conv2d(
+        data=act1,
+        channels=pointwise_channels,
+        kernel_size=(1, 1),
+        strides=(1, 1),
+        padding=(0, 0),
+        use_bias=False,
+        layout="NCHW",
+        name=f"{name}_conv2",
+    )
+    bn2 = sym.batch_norm(data=conv2, epsilon=epsilon, name=f"{name}_bn2")
+    return sym.relu(data=bn2, name=f"{name}_relu2")
 
 def mobile_net(num_classes=1000, alpha=1.0, is_shallow=False):
     """Function to construct a MobileNet"""

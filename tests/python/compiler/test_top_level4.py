@@ -13,8 +13,8 @@ def helper(symbol, inputs, dtype,
     input_syms = []
     np_inputs = {}
     for (name, shape, s) in inputs:
-        ishapes.update({name: shape})
-        np_inputs.update({name: np.random.uniform(size=shape).astype(dtype)})
+        ishapes[name] = shape
+        np_inputs[name] = np.random.uniform(size=shape).astype(dtype)
         input_syms.append(s)
 
     for target, ctx in ctx_list():
@@ -30,16 +30,16 @@ def helper(symbol, inputs, dtype,
             graph._set_symbol_list_attr("grad_xs", input_syms)
             graph._set_symbol_list_attr("grad_ys_out_grad", sym.Variable("head_grads", shape=y_np.shape))
             graph = graph.apply("Gradient")
-            ishapes.update({"head_grads": y_np.shape})
+            ishapes["head_grads"] = y_np.shape
             graph, lib, _ = nnvm.compiler.build(graph, target, ishapes)
             m = graph_runtime.create(graph, lib, ctx)
             head_grads = np.random.uniform(size=y_np.shape).astype(dtype)
             y_np = np_backward(head_grads=head_grads, **np_inputs)
             b_inputs = {}
             if need_input:
-                b_inputs.update(np_inputs)
+                b_inputs |= np_inputs
             if need_head_grads:
-                b_inputs.update({"head_grads":head_grads})
+                b_inputs["head_grads"] = head_grads
             m.run(**b_inputs)
             for i in range(len(y_np)):
                 out = m.get_output(i, tvm.nd.empty(y_np[i].shape, dtype))
@@ -48,10 +48,7 @@ def helper(symbol, inputs, dtype,
 
 def verify_transpose(dshape, axes):
     x = sym.Variable("x")
-    if axes:
-        y = sym.transpose(x, axes=axes)
-    else:
-        y = sym.transpose(x)
+    y = sym.transpose(x, axes=axes) if axes else sym.transpose(x)
     y = y + 1
     dtype = "float32"
     for target, ctx in ctx_list():
@@ -252,7 +249,7 @@ def test_expand_like():
 
 
 def verify_elemwise_sum(num_args):
-    s = [sym.Variable("input" + str(i)) for i in range(num_args)]
+    s = [sym.Variable(f"input{str(i)}") for i in range(num_args)]
     y = sym.elemwise_sum(*s, num_args=num_args)
 
     def forward(**inputs):
@@ -262,8 +259,7 @@ def verify_elemwise_sum(num_args):
         return [head_grads] * num_args
 
     dtype = "float32"
-    inputs = [("input" + str(i), (3, 4, 5), s[i])
-              for i in range(num_args)]
+    inputs = [(f"input{str(i)}", (3, 4, 5), s[i]) for i in range(num_args)]
     helper(y, inputs, dtype, forward, backward, need_input=False)
 
 

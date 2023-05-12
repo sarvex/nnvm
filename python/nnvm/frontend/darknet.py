@@ -55,27 +55,27 @@ __all__ = ['from_darknet']
 
 def _darknet_get_nnvm_op(op_name):
     """Get the nnvm operation from opname, raise error if not supported."""
-    op = getattr(_sym, op_name)
-    if not op:
-        raise RuntimeError("Not to map op_name {} to nnvm.sym".format(op_name))
-    return op
+    if op := getattr(_sym, op_name):
+        return op
+    else:
+        raise RuntimeError(f"Not to map op_name {op_name} to nnvm.sym")
 
 def _darknet_required_attr(attr, key):
     """Check the attribute exists and return if exists, if not return error."""
     assert isinstance(attr, dict)
     if key not in attr:
-        raise AttributeError("Required attribute {} not found.".format(key))
+        raise AttributeError(f"Required attribute {key} not found.")
     return attr[key]
 
 def _darknet_raise_not_supported(attr, op='nnvm'):
     """Raise error if any operation is not supported."""
-    err = "{} is not supported in {}.".format(attr, op)
+    err = f"{attr} is not supported in {op}."
     raise NotImplementedError(err)
 
 def _darknet_warn_not_used(attr, op='nnvm'):
     """Raise warning if any operation not supported."""
     import warnings
-    err = "{} is ignored in {}.".format(attr, op)
+    err = f"{attr} is ignored in {op}."
     warnings.warn(err)
 
 def _darknet_parse_tshape(tshape):
@@ -99,8 +99,7 @@ def _darknet_maxpooling(inputs, attrs):
     new_attrs['pool_size'] = [kernel[0], kernel[0]]
     new_attrs['strides'] = str((strides, strides))
     new_attrs['padding'] = str((pads, pads))
-    extra_pad_size = attrs.get('extra_pad_size', 0)
-    if extra_pad_size:
+    if extra_pad_size := attrs.get('extra_pad_size', 0):
         pad_width = ((0, 0), (0, 0), (0, extra_pad_size), (0, extra_pad_size))
         inputs = _sym.pad(*inputs, pad_width=pad_width, pad_value=np.finfo(np.float32).min)
     return _darknet_get_nnvm_op(op_name)(*inputs, **new_attrs), None
@@ -136,7 +135,7 @@ def _darknet_conv2d(inputs, attrs):
         _darknet_raise_not_supported('non 2d kernel', 'conv2d')
     layout = attrs.get('layout', 'NCHW')
     if layout not in ['NCHW', 'NHWC']:
-        _darknet_raise_not_supported('layout: ' + layout, 'conv2d')
+        _darknet_raise_not_supported(f'layout: {layout}', 'conv2d')
     strides = int(attrs.get('stride', (1, 1)))
     pads = int(attrs.get('pad', (0, 0)))
 
@@ -148,14 +147,9 @@ def _darknet_conv2d(inputs, attrs):
     new_attrs['dilation'] = attrs.get('dilate', (1, 1))
     new_attrs['groups'] = attrs.get('num_group', 1)
     new_attrs['layout'] = layout
-    if attrs.get('use_batchNorm', False) is True:
-        new_attrs['use_bias'] = False
-    else:
-        new_attrs['use_bias'] = True
-    out_name = {}
+    new_attrs['use_bias'] = attrs.get('use_batchNorm', False) is not True
     sym = _darknet_get_nnvm_op(op_name)(*inputs, **new_attrs)
-    out_name[0] = sym.list_output_names()[0].replace('_output', '')
-
+    out_name = {0: sym.list_output_names()[0].replace('_output', '')}
     if attrs.get('use_batchNorm', False) is True:
         op_name, new_attrs = 'batch_norm', {}
         new_attrs['epsilon'] = 0.000001
@@ -178,7 +172,7 @@ def _darknet_conv2d_transpose(inputs, attrs):
         _darknet_raise_not_supported('non-2d kernel', 'conv2d_transpose')
     layout = attrs.get('layout', 'NCHW')
     if layout not in ['NCHW', 'NHWC']:
-        _darknet_raise_not_supported('layout: ' + layout, 'conv2d_transpose')
+        _darknet_raise_not_supported(f'layout: {layout}', 'conv2d_transpose')
     op_name, new_attrs = 'conv2d_transpose', {}
     new_attrs['channels'] = _darknet_required_attr(attrs, 'num_filter')
     new_attrs['kernel_size'] = kernel
@@ -202,10 +196,10 @@ def _darknet_shortcut(inputs, attrs):
     input_1_size = int(attrs['add_out_size'])
 
     if input_0_size > input_1_size:
-        scale = int(input_0_size/input_1_size)
+        scale = input_0_size // input_1_size
         input_1 = _sym.upsampling(input_1, scale=scale, name="_upsampling")
     elif input_0_size < input_1_size:
-        stride = int(input_1_size/input_0_size)
+        stride = input_1_size // input_0_size
         input_1 = _sym.avg_pool2d(input_1, pool_size=(1, 1),
                                   strides=(stride, stride), padding=(0, 0), name="_downsampling")
 
@@ -303,7 +297,7 @@ def _darknet_activations(inputs, attrs):
     elif ACTIVATION.LEAKY == act:
         act_type = 'leaky_relu'
     else:
-        _darknet_raise_not_supported('act: ' + act)
+        _darknet_raise_not_supported(f'act: {act}')
 
     if act_type in ['relu', 'tanh']:
         op_name, new_attrs = act_type, {}
@@ -313,12 +307,12 @@ def _darknet_activations(inputs, attrs):
         new_attrs['alpha'] = attrs.get('slope', 0.1)
         sym = _darknet_get_nnvm_op(op_name)(*inputs, **new_attrs)
     else:
-        _darknet_raise_not_supported('act_type: ' + act_type)
+        _darknet_raise_not_supported(f'act_type: {act_type}')
     return sym, None
 
 def _darknet_op_not_support(inputs, attrs):
     """Raise exception if the operation is not supported."""
-    err = "{} is not supported in {}.".format(attrs, inputs)
+    err = f"{attrs} is not supported in {inputs}."
     raise NotImplementedError(err)
 
 _DARKNET_CONVERT_MAP = {
@@ -373,7 +367,7 @@ def _darknet_convert_symbol(op_name, inputs, attrs):
     if op_name in _DARKNET_CONVERT_MAP:
         sym, out_name = _DARKNET_CONVERT_MAP[op_name](inputs, attrs)
     else:
-        _darknet_raise_not_supported('Operator type ' + str(op_name))
+        _darknet_raise_not_supported(f'Operator type {str(op_name)}')
     if out_name is  None:
         out_name = sym.list_output_names()[0].replace('_output', '')
     return out_name, sym
@@ -381,9 +375,7 @@ def _darknet_convert_symbol(op_name, inputs, attrs):
 
 def _as_list(arr):
     """Force being a list, ignore if already is."""
-    if isinstance(arr, list):
-        return arr
-    return [arr]
+    return arr if isinstance(arr, list) else [arr]
 
 def _read_memory_buffer(shape, data, dtype):
     length = 1
@@ -412,10 +404,10 @@ def _get_convolution_weights(layer, opname, params, dtype):
     if layer.batch_normalize == 1 and layer.dontloadscales != 1:
         _get_batchnorm_weights(layer, opname[1], params, layer.n, dtype)
         k = _get_tvm_params_name(opname[1], 'beta')
-        params[k] = tvm.nd.array(biases)
     else:
         k = _get_tvm_params_name(opname[0], 'bias')
-        params[k] = tvm.nd.array(biases)
+
+    params[k] = tvm.nd.array(biases)
 
 def _get_connected_weights(layer, opname, params, dtype):
     """Parse the weights and biases for fully connected or dense layer."""
@@ -454,77 +446,64 @@ def _get_darknet_attrs(net, layer_num):
     use_flatten = True
     layer = net.layers[layer_num]
     if LAYERTYPE.CONVOLUTIONAL == layer.type:
-        attr.update({'layout' : 'NCHW'})
-        attr.update({'pad' : str(layer.pad)})
-        attr.update({'num_group' : str(layer.groups)})
-        attr.update({'num_filter' : str(layer.n)})
-        attr.update({'stride' : str(layer.stride)})
-        attr.update({'kernel' : str(layer.size)})
-        attr.update({'activation' : (layer.activation)})
+        attr['layout'] = 'NCHW'
+        attr['pad'] = str(layer.pad)
+        attr['num_group'] = str(layer.groups)
+        attr['num_filter'] = str(layer.n)
+        attr['stride'] = str(layer.stride)
+        attr['kernel'] = str(layer.size)
+        attr['activation'] = layer.activation
 
-        if layer.nbiases == 0:
-            attr.update({'use_bias' : False})
-        else:
-            attr.update({'use_bias' : True})
-
+        attr['use_bias'] = layer.nbiases != 0
         if layer.batch_normalize == 1 and layer.dontloadscales != 1:
-            attr.update({'use_batchNorm' : True})
-            attr.update({'use_scales' : True})
-
-    #elif LAYERTYPE.BATCHNORM == layer.type:
-    #    attr.update({'flatten' : str('True')})
+            attr['use_batchNorm'] = True
+            attr['use_scales'] = True
 
     elif LAYERTYPE.CONNECTED == layer.type:
-        attr.update({'num_hidden' : str(layer.outputs)})
-        attr.update({'activation' : (layer.activation)})
+        attr['num_hidden'] = str(layer.outputs)
+        attr['activation'] = layer.activation
         if layer_num != 0:
             layer_prev = net.layers[layer_num - 1]
             if (layer_prev.out_h == layer.h and
                     layer_prev.out_w == layer.w and
                     layer_prev.out_c == layer.c):
                 use_flatten = False
-        attr.update({'use_flatten' : use_flatten})
-        if layer.nbiases == 0:
-            attr.update({'use_bias' : False})
-        else:
-            attr.update({'use_bias' : True})
+        attr['use_flatten'] = use_flatten
+        attr['use_bias'] = layer.nbiases != 0
         if layer.batch_normalize == 1 and layer.dontloadscales != 1:
-            attr.update({'use_batchNorm' : True})
-            attr.update({'use_scales' : True})
+            attr['use_batchNorm'] = True
+            attr['use_scales'] = True
 
     elif LAYERTYPE.MAXPOOL == layer.type:
-        attr.update({'pad' : str(layer.pad)})
-        attr.update({'stride' : str(layer.stride)})
-        attr.update({'kernel' : str(layer.size)})
+        attr['pad'] = str(layer.pad)
+        attr['stride'] = str(layer.stride)
+        attr['kernel'] = str(layer.size)
         max_output = (layer.w - layer.size + 2 * layer.pad)/float(layer.stride) + 1
         if max_output < layer.out_w:
             extra_pad = (layer.out_w - max_output)*layer.stride
-            attr.update({'extra_pad_size' : int(extra_pad)})
+            attr['extra_pad_size'] = int(extra_pad)
     elif LAYERTYPE.AVGPOOL == layer.type:
-        attr.update({'pad' : str(layer.pad)})
-        if layer.stride == 0:
-            attr.update({'stride' : str(1)})
-        else:
-            attr.update({'stride' : str(layer.stride)})
+        attr['pad'] = str(layer.pad)
+        attr['stride'] = str(1) if layer.stride == 0 else str(layer.stride)
         if layer.size == 0 and layer.h == layer.w:
-            attr.update({'kernel' : str(layer.h)})
+            attr['kernel'] = str(layer.h)
         else:
-            attr.update({'kernel' : str(layer.size)})
+            attr['kernel'] = str(layer.size)
 
     elif LAYERTYPE.DROPOUT == layer.type:
-        attr.update({'p' : str(layer.probability)})
+        attr['p'] = str(layer.probability)
 
     elif LAYERTYPE.SOFTMAX == layer.type:
-        attr.update({'axis' : 1})
-        attr.update({'use_flatten' : True})
+        attr['axis'] = 1
+        attr['use_flatten'] = True
 
     elif LAYERTYPE.SHORTCUT == layer.type:
         add_layer = net.layers[layer.index]
-        attr.update({'activation' : (layer.activation)})
-        attr.update({'out_channel' : (layer.out_c)})
-        attr.update({'out_size' : (layer.out_h)})
-        attr.update({'add_out_channel' : (add_layer.out_c)})
-        attr.update({'add_out_size' : (add_layer.out_h)})
+        attr['activation'] = layer.activation
+        attr['out_channel'] = layer.out_c
+        attr['out_size'] = layer.out_h
+        attr['add_out_channel'] = add_layer.out_c
+        attr['add_out_size'] = add_layer.out_h
 
     elif LAYERTYPE.ROUTE == layer.type:
         pass
@@ -533,23 +512,23 @@ def _get_darknet_attrs(net, layer_num):
         pass
 
     elif LAYERTYPE.REORG == layer.type:
-        attr.update({'stride' : layer.stride})
+        attr['stride'] = layer.stride
 
     elif LAYERTYPE.REGION == layer.type:
-        attr.update({'n' : layer.n})
-        attr.update({'classes' : layer.classes})
-        attr.update({'coords' : layer.coords})
-        attr.update({'background' : layer.background})
-        attr.update({'softmax' : layer.softmax})
+        attr['n'] = layer.n
+        attr['classes'] = layer.classes
+        attr['coords'] = layer.coords
+        attr['background'] = layer.background
+        attr['softmax'] = layer.softmax
     else:
-        err = "Darknet layer type {} is not supported in nnvm.".format(layer.type)
+        err = f"Darknet layer type {layer.type} is not supported in nnvm."
         raise NotImplementedError(err)
 
     return layer.type, attr
 
 def _get_tvm_params_name(opname, arg_name):
     """Makes the params name for the k,v pair."""
-    return opname + '_'+ arg_name
+    return f'{opname}_{arg_name}'
 
 def _get_darknet_params(layer, opname, tvmparams, dtype='float32'):
     """To parse and get the darknet params."""
@@ -575,22 +554,21 @@ def _preproc_layer(net, i, sym_array):
     skip_layer = False
 
     if LAYERTYPE.ROUTE == layer.type:
-        sym = []
-        for j in range(layer.n):
-            sym.append(sym_array[layer.input_layers[j]])
+        sym = [sym_array[layer.input_layers[j]] for j in range(layer.n)]
         if layer.n == 1:
             skip_layer = True
 
-    elif LAYERTYPE.COST == layer.type:
+    elif (
+        LAYERTYPE.COST == layer.type
+        or LAYERTYPE.SHORTCUT != layer.type
+        and LAYERTYPE.BLANK == layer.type
+    ):
         skip_layer = True
 
     elif LAYERTYPE.SHORTCUT == layer.type:
         sym = [sym, sym_array[layer.index]]
 
-    elif LAYERTYPE.BLANK == layer.type:
-        skip_layer = True
-
-    if skip_layer is True:
+    if skip_layer:
         sym_array[i] = sym
 
     return skip_layer, sym

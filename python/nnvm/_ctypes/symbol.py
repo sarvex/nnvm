@@ -70,7 +70,7 @@ class SymbolBase(object):
 
         if name:
             name = c_str(name)
-        if len(args) != 0 and len(kwargs) != 0:
+        if args and kwargs:
             raise TypeError('compose only accept input Symbols \
                 either as positional or keyword arguments, not both')
 
@@ -82,8 +82,8 @@ class SymbolBase(object):
                 raise TypeError('Compose expect `Symbol` as arguments')
 
         num_args = len(args) + len(kwargs)
-        if len(kwargs) != 0:
-            keys = c_array(ctypes.c_char_p, [c_str(key) for key in kwargs.keys()])
+        if kwargs:
+            keys = c_array(ctypes.c_char_p, [c_str(key) for key in kwargs])
             args = c_array(SymbolHandle, [s.handle for s in kwargs.values()])
         else:
             keys = None
@@ -99,8 +99,7 @@ class SymbolBase(object):
         **kwargs
             The attributes to set
         """
-        keys = c_array(ctypes.c_char_p,
-                       [c_str(key) for key in kwargs.keys()])
+        keys = c_array(ctypes.c_char_p, [c_str(key) for key in kwargs])
         vals = c_array(ctypes.c_char_p,
                        [c_str(str(val)) for val in kwargs.values()])
         num_args = nn_uint(len(kwargs))
@@ -180,7 +179,7 @@ def _make_atomic_symbol_function(handle, name):
             param_keys, param_vals,
             ctypes.byref(sym_handle)))
 
-        if len(args) != 0 and len(symbol_kwargs) != 0:
+        if args and symbol_kwargs:
             raise TypeError(
                 '%s can only accept input'
                 'Symbols either as positional or keyword arguments, not both' % func_name)
@@ -206,13 +205,10 @@ def _init_symbol_module(symbol_class, root_namespace):
 
     check_call(_LIB.NNListAllOpNames(ctypes.byref(size),
                                      ctypes.byref(plist)))
-    op_names = []
-    for i in range(size.value):
-        op_names.append(py_str(plist[i]))
-
-    module_obj = sys.modules["%s.symbol" % root_namespace]
-    module_obj_contrib = sys.modules["%s.contrib" % root_namespace]
-    module_internal = sys.modules["%s._symbol_internal" % root_namespace]
+    op_names = [py_str(plist[i]) for i in range(size.value)]
+    module_obj = sys.modules[f"{root_namespace}.symbol"]
+    module_obj_contrib = sys.modules[f"{root_namespace}.contrib"]
+    module_internal = sys.modules[f"{root_namespace}._symbol_internal"]
     for name in op_names:
         hdl = OpHandle()
         check_call(_LIB.NNGetOpHandle(c_str(name), ctypes.byref(hdl)))

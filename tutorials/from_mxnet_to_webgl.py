@@ -408,7 +408,7 @@ def deploy_rpc():
 
     out = module.get_output(0, out=tvm.nd.empty(out_shape, ctx=ctx))
     # Print first 10 elements of output.
-    print(out.asnumpy()[0][0:10])
+    print(out.asnumpy()[0][:10])
 
 if run_deploy_rpc and opengl_enabled:
     deploy_rpc()
@@ -471,7 +471,7 @@ def deploy_web():
                     os.path.join(output_dir, "tvm_runtime.js"))
     shutil.copyfile(os.path.join(curr_path, "web/resnet.html"),
                     os.path.join(output_dir, "resnet.html"))
-    
+
     # Now we want to save some extra files so that we can execute the model from
     # JavaScript.
     # - data shape
@@ -496,7 +496,7 @@ def deploy_web():
     port = 8080
     handler = SimpleHTTPServer.SimpleHTTPRequestHandler
     httpd = SocketServer.TCPServer(("", port), handler)
-    print("Please open http://localhost:" + str(port) + "/resnet.html")
+    print(f"Please open http://localhost:{port}/resnet.html")
     httpd.serve_forever()
 
 if run_deploy_web and opengl_enabled:

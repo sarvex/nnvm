@@ -36,7 +36,9 @@ class Optimizer(object):
         self.rescale_grad = rescale_grad
         self.clip_gradient = clip_gradient
         self.wd = wd
-        init_update_t = sym.Variable(name+'_t', init=sym.zeros(shape=(1,), dtype="int32"))
+        init_update_t = sym.Variable(
+            f'{name}_t', init=sym.zeros(shape=(1,), dtype="int32")
+        )
         self.update_t = sym._assign(init_update_t, init_update_t + 1)
 
     def minimize(self, obj, var=None):
@@ -65,10 +67,7 @@ class Optimizer(object):
         lr : float
             Learning rate.
         """
-        if self.lr_scheduler is not None:
-            lr = self.lr_scheduler(self.update_t)
-        else:
-            lr = self.lr
+        lr = self.lr if self.lr_scheduler is None else self.lr_scheduler(self.update_t)
         return lr
 
 
@@ -115,8 +114,8 @@ class Adam(Optimizer):
         grads = graph_util.gradients(obj, variables)
         updates = []
         for i, v in enumerate(variables):
-            self.m.append(sym.Variable(self.name + '_m' + str(i), init=sym.zeros_like(v)))
-            self.v.append(sym.Variable(self.name + '_v' + str(i), init=sym.zeros_like(v)))
+            self.m.append(sym.Variable(f'{self.name}_m{str(i)}', init=sym.zeros_like(v)))
+            self.v.append(sym.Variable(f'{self.name}_v{str(i)}', init=sym.zeros_like(v)))
         rate = sym.sqrt(1 - self.beta2 ** self.update_t) / (1 -  self.beta1 ** self.update_t)
         lr_t = self._get_lr() * rate
         for variable, g, m, v in zip(variables, grads, self.m, self.v):
@@ -126,6 +125,6 @@ class Adam(Optimizer):
             update_m = sym._assign(m, self.beta1 * m + (1 - self.beta1) * g)
             update_v = sym._assign(v, self.beta2 * v + (1 - self.beta2) * g * g)
             update_var = sym._assign(variable, variable - lr_t * (update_m / (sym.sqrt(update_v) \
-                         + self.epsilon) + self.wd * variable))
+                             + self.epsilon) + self.wd * variable))
             updates.append(update_var)
         return sym.Group(updates)

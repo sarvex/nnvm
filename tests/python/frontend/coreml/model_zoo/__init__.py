@@ -6,7 +6,7 @@ import numpy as np
 def download(url, path, overwrite=False):
     if os.path.exists(path) and not overwrite:
         return
-    print('Downloading {} to {}.'.format(url, path))
+    print(f'Downloading {url} to {path}.')
     urllib.URLopener().retrieve(url, path)
 
 def get_mobilenet():

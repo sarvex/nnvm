@@ -38,7 +38,7 @@ def main():
         net, params = nnvm.testing.mobilenet.get_workload(
             batch_size=1, image_shape=image_shape)
     else:
-        raise ValueError('no benchmark prepared for {}.'.format(args.model))
+        raise ValueError(f'no benchmark prepared for {args.model}.')
 
 
     with nnvm.compiler.build_config(opt_level=opt_level):
@@ -63,9 +63,9 @@ def main():
     out = module.get_output(0, tvm.nd.empty(out_shape, ctx=ctx))
     out.asnumpy()
 
-    print('benchmark args: {}'.format(args))
+    print(f'benchmark args: {args}')
     ftimer = module.module.time_evaluator("run", ctx, num_iter)
-    for i in range(3):
+    for _ in range(3):
         prof_res = ftimer()
         print(prof_res)
         # sleep for avoiding cpu overheat

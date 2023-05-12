@@ -19,10 +19,11 @@ def compute_expand_like(attrs, inputs, _):
     axis = attrs.get_int_tuple("axis")
     if exclude:
         exclude_axis = (axis,) if isinstance(axis, int) else axis
-        axis = []
-        for item in range(len(inputs[1].shape)):
-            if item not in exclude_axis:
-                axis.append(item)
+        axis = [
+            item
+            for item in range(len(inputs[1].shape))
+            if item not in exclude_axis
+        ]
         axis = tuple(axis)
 
     return topi.transform.expand_like(inputs[0], inputs[1], axis)

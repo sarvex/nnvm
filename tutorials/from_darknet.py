@@ -94,9 +94,9 @@ def download(url, path, overwrite=False, sizecompare=False):
                 print ("exist file got corrupted, downloading", path , " file freshly")
                 download(url, path, True, False)
                 return
-        print('File {} exists, skip.'.format(path))
+        print(f'File {path} exists, skip.')
         return
-    print('Downloading from url {} to {}'.format(url, path))
+    print(f'Downloading from url {url} to {path}')
     try:
         urllib.request.urlretrieve(url, path, reporthook=dlProgress)
         print('')
@@ -109,11 +109,10 @@ def download(url, path, overwrite=False, sizecompare=False):
 # --------------------------------------------------------------------
 # Download cfg and weights file first time.
 
-cfg_name = model_name + '.cfg'
-weights_name = model_name + '.weights'
-cfg_url = 'https://github.com/siju-samuel/darknet/blob/master/cfg/' + \
-            cfg_name + '?raw=true'
-weights_url = 'http://pjreddie.com/media/files/' + weights_name + '?raw=true'
+cfg_name = f'{model_name}.cfg'
+weights_name = f'{model_name}.weights'
+cfg_url = f'https://github.com/siju-samuel/darknet/blob/master/cfg/{cfg_name}?raw=true'
+weights_url = f'http://pjreddie.com/media/files/{weights_name}?raw=true'
 
 download(cfg_url, cfg_name)
 download(weights_url, weights_name)
@@ -123,21 +122,20 @@ download(weights_url, weights_name)
 # ---------------------------------
 
 darknet_lib = 'libdarknet.so'
-darknetlib_url = 'https://github.com/siju-samuel/darknet/blob/master/lib/' + \
-                        darknet_lib + '?raw=true'
+darknetlib_url = f'https://github.com/siju-samuel/darknet/blob/master/lib/{darknet_lib}?raw=true'
 download(darknetlib_url, darknet_lib)
 
 #if the file doesnt exist, then exit normally.
-if os.path.isfile('./' + darknet_lib) is False:
+if os.path.isfile(f'./{darknet_lib}') is False:
     exit(0)
 
-darknet_lib = __darknetffi__.dlopen('./' + darknet_lib)
-cfg = "./" + str(cfg_name)
-weights = "./" + str(weights_name)
+darknet_lib = __darknetffi__.dlopen(f'./{darknet_lib}')
+cfg = f"./{str(cfg_name)}"
+weights = f"./{str(weights_name)}"
 net = darknet_lib.load_network(cfg.encode('utf-8'), weights.encode('utf-8'), 0)
-dtype = 'float32'
 batch_size = 1
 print("Converting darknet to nnvm symbols...")
+dtype = 'float32'
 sym, params = nnvm.frontend.darknet.from_darknet(net, dtype)
 
 ######################################################################
@@ -156,23 +154,22 @@ with nnvm.compiler.build_config(opt_level=2):
 def save_lib():
     #Save the graph, params and .so to the current directory
     print("Saving the compiled output...")
-    path_name = 'nnvm_darknet_' + model_name
-    path_lib = path_name + '_deploy_lib.so'
+    path_name = f'nnvm_darknet_{model_name}'
+    path_lib = f'{path_name}_deploy_lib.so'
     lib.export_library(path_lib)
-    with open(path_name
-+ "deploy_graph.json", "w") as fo:
-        fo.write(graph.json())
-    with open(path_name
-+ "deploy_param.params", "wb") as fo:
-        fo.write(nnvm.compiler.save_param_dict(params))
+        with open(path_name
+    + "deploy_graph.json", "w") as fo:
+            fo.write(graph.json())
+        with open(path_name
+    + "deploy_param.params", "wb") as fo:
+            fo.write(nnvm.compiler.save_param_dict(params))
 #save_lib()
 
 ######################################################################
 # Load a test image
 # --------------------------------------------------------------------
 print("Loading the test image...")
-img_url = 'https://github.com/siju-samuel/darknet/blob/master/data/' + \
-            test_image   +'?raw=true'
+img_url = f'https://github.com/siju-samuel/darknet/blob/master/data/{test_image}?raw=true'
 download(img_url, test_image)
 
 data = nnvm.testing.darknet.load_image(test_image, net.w, net.h)
@@ -196,14 +193,13 @@ m.run()
 out_shape = (net.outputs,)
 tvm_out = m.get_output(0, tvm.nd.empty(out_shape, dtype)).asnumpy()
 
-#do the detection and bring up the bounding boxes
-thresh = 0.24
 hier_thresh = 0.5
 img = nnvm.testing.darknet.load_image_color(test_image)
 _, im_h, im_w = img.shape
 probs= []
 boxes = []
 region_layer = net.layers[net.n - 1]
+thresh = 0.24
 boxes, probs = nnvm.testing.yolo2_detection.get_region_boxes(region_layer, im_w, im_h, net.w, net.h,
                        thresh, probs, boxes, 1, tvm_out)
 
@@ -211,9 +207,9 @@ boxes, probs = nnvm.testing.yolo2_detection.do_nms_sort(boxes, probs,
                        region_layer.w*region_layer.h*region_layer.n, region_layer.classes, 0.3)
 
 coco_name = 'coco.names'
-coco_url = 'https://github.com/siju-samuel/darknet/blob/master/data/' + coco_name   +'?raw=true'
+coco_url = f'https://github.com/siju-samuel/darknet/blob/master/data/{coco_name}?raw=true'
 font_name = 'arial.ttf'
-font_url = 'https://github.com/siju-samuel/darknet/blob/master/data/' + font_name   +'?raw=true'
+font_url = f'https://github.com/siju-samuel/darknet/blob/master/data/{font_name}?raw=true'
 download(coco_url, coco_name)
 download(font_url, font_name)
 

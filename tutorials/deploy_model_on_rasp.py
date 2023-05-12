@@ -176,11 +176,7 @@ out_shape = (batch_size, num_classes)
 # specify its instruction set. Here is the option I use for my Raspberry
 # Pi, which has been proved as a good compilation configuration.
 
-if use_rasp:
-    target = tvm.target.rasp()
-else:
-    target = tvm.target.create('llvm')
-
+target = tvm.target.rasp() if use_rasp else tvm.target.create('llvm')
 graph, lib, params = nnvm.compiler.build(
     net, target, shape={"data": data_shape}, params=params)
 
@@ -224,7 +220,7 @@ module.run()
 out = module.get_output(0, tvm.nd.empty(out_shape, ctx=ctx))
 # get top1 result
 top1 = np.argmax(out.asnumpy())
-print('TVM prediction top-1: {}'.format(synset[top1]))
+print(f'TVM prediction top-1: {synset[top1]}')
 
 if not use_rasp:
     # terminate the local server

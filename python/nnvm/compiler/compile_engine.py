@@ -77,10 +77,10 @@ class Engine(object):
         res += "CompilerEngine dump, %d items cached\n" % len(items)
         for key, value in items:
             res += "------------------------------------\n"
-            res += "target={}\n".format(key.target)
-            res += "inputs={}\n".format(key.inputs)
-            res += "use_count={}\n".format(value.use_count)
-            res += "func_name={}\n".format(value.graph_func.func_name)
+            res += f"target={key.target}\n"
+            res += f"inputs={key.inputs}\n"
+            res += f"use_count={value.use_count}\n"
+            res += f"func_name={value.graph_func.func_name}\n"
             res += key.graph.ir() + "\n"
         res += "===================================\n"
         return res

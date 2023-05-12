@@ -16,5 +16,4 @@ def get_super_resolution():
     # TODO(zhreshold): allow shape inference for batch size > 1
     r1 = sym.reshape(conv4, shape=(1, 1, factor, factor, size, size))
     t1 = sym.transpose(r1, axes=(0, 1, 4, 2, 5, 3))
-    r2 = sym.reshape(t1, shape=(1, 1, size * factor, size * factor))
-    return r2
+    return sym.reshape(t1, shape=(1, 1, size * factor, size * factor))

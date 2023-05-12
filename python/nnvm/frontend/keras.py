@@ -11,9 +11,11 @@ __all__ = ['from_keras']
 
 
 def _check_data_format(keras_layer):
-    if hasattr(keras_layer, ('data_format')):
-        if keras_layer.data_format != 'channels_last':
-            raise ValueError("Keras frontend currently supports data_format = channels_last only.")
+    if (
+        hasattr(keras_layer, ('data_format'))
+        and keras_layer.data_format != 'channels_last'
+    ):
+        raise ValueError("Keras frontend currently supports data_format = channels_last only.")
 
 
 def _get_pad_pair(input1d, kernel1d, stride1d):
@@ -27,11 +29,10 @@ def _get_pad_pair(input1d, kernel1d, stride1d):
 def _convert_activation(insym, keras_layer, _):
     if isinstance(keras_layer, str):
         act_type = keras_layer
+    elif sys.version_info.major < 3:
+        act_type = keras_layer.activation.func_name
     else:
-        if sys.version_info.major < 3:
-            act_type = keras_layer.activation.func_name
-        else:
-            act_type = keras_layer.activation.__name__
+        act_type = keras_layer.activation.__name__
     if act_type == 'linear':
         if isinstance(keras_layer, str):
             return insym
@@ -58,7 +59,7 @@ def _convert_activation(insym, keras_layer, _):
     elif act_type == 'hard_sigmoid':
         raise NotImplementedError('hard_sigmoid not implemented')
     else:
-        raise TypeError("Unsupported activation type : {}".format(act_type))
+        raise TypeError(f"Unsupported activation type : {act_type}")
 
 
 def _convert_advanced_activation(insym, keras_layer, _):
@@ -72,7 +73,7 @@ def _convert_advanced_activation(insym, keras_layer, _):
     elif act_type == 'ThresholdedReLU':
         raise NotImplementedError('ThresholdedReLU not implemented')
     else:
-        raise TypeError("Unsupported advanced activation type : {}".format(act_type))
+        raise TypeError(f"Unsupported advanced activation type : {act_type}")
 
 
 def _convert_merge(insym, keras_layer, _):
@@ -90,7 +91,7 @@ def _convert_merge(insym, keras_layer, _):
         elif merge_type == 'Maximum':
             raise NotImplementedError('Maximum merge not implemented')
         else:
-            raise TypeError("Unsupported merge type : {}".format(merge_type))
+            raise TypeError(f"Unsupported merge type : {merge_type}")
     return ret
 
 
@@ -150,7 +151,6 @@ def _convert_convolution(insym, keras_layer, symtab):
         params['bias'] = symtab.new_const(weightList[1])
     if keras_layer.padding == 'valid':
         pass
-    # we insert a separate pad operator
     elif keras_layer.padding == 'same':
         in_h = keras_layer.input.shape[1].value
         in_w = keras_layer.input.shape[2].value
@@ -158,7 +158,7 @@ def _convert_convolution(insym, keras_layer, symtab):
         pad_l, pad_r = _get_pad_pair(in_w, kernel_w, stride_w)
         insym = _sym.pad(data=insym, pad_width=((0, 0), (0, 0), (pad_t, pad_b), (pad_l, pad_r)))
     else:
-        raise TypeError("Unsupported padding type : {}".format(keras_layer.padding))
+        raise TypeError(f"Unsupported padding type : {keras_layer.padding}")
     if is_deconv:
         out = _sym.conv2d_transpose(data=insym, **params)
     else:
@@ -190,7 +190,6 @@ def _convert_separable_convolution(insym, keras_layer, symtab):
                'use_bias': False}
     if keras_layer.padding == 'valid':
         pass
-    # we insert a separate pad operator
     elif keras_layer.padding == 'same':
         in_h = keras_layer.input.shape[1].value
         in_w = keras_layer.input.shape[2].value
@@ -199,7 +198,7 @@ def _convert_separable_convolution(insym, keras_layer, symtab):
         insym = _sym.pad(data=insym, pad_width=(
             (0, 0), (0, 0), (pad_t, pad_b), (pad_l, pad_r)))
     else:
-        raise TypeError("Unsupported padding type : {}".format(keras_layer.padding))
+        raise TypeError(f"Unsupported padding type : {keras_layer.padding}")
     depthconv = _sym.conv2d(data=insym, **params0)
     # pointwise conv
     weight1 = weightList[1].transpose([3, 2, 0, 1])
@@ -247,7 +246,6 @@ def _convert_pooling(insym, keras_layer, symtab):
                   'padding': [0, 0]}
         if keras_layer.padding == 'valid':
             pass
-        # we insert a separate pad operator
         elif keras_layer.padding == 'same':
             in_h = keras_layer.input.shape[1].value
             in_w = keras_layer.input.shape[2].value
@@ -256,14 +254,14 @@ def _convert_pooling(insym, keras_layer, symtab):
             insym = _sym.pad(data=insym, pad_width=(
                 (0, 0), (0, 0), (pad_t, pad_b), (pad_l, pad_r)))
         else:
-            raise TypeError("Unsupported padding type : {}".format(keras_layer.padding))
+            raise TypeError(f"Unsupported padding type : {keras_layer.padding}")
         if pool_type == 'MaxPooling2D':
             return _sym.max_pool2d(insym, **params)
         elif pool_type == 'AveragePooling2D':
             # TODO: in keras, padded zeros are not calculated
             return _sym.avg_pool2d(insym, **params)
         else:
-            raise TypeError("Unsupported pooling type : {}".format(keras_layer))
+            raise TypeError(f"Unsupported pooling type : {keras_layer}")
 
 
 def _convert_upsample(insym, keras_layer, _):
@@ -275,17 +273,20 @@ def _convert_upsample(insym, keras_layer, _):
     elif upsample_type == "UpSampling2D":
         h, w = keras_layer.size
         if h != w:
-            raise TypeError("Unsupported upsampling type with different axes size : {}"
-                            .format(keras_layer.size))
+            raise TypeError(
+                f"Unsupported upsampling type with different axes size : {keras_layer.size}"
+            )
         params = {'scale': h}
     elif upsample_type == "UpSampling3D":
         h, w, d = keras_layer.size
-        if h != w or w != d:
-            raise TypeError("Unsupported upsampling type with different axes size : {}"
-                            .format(keras_layer.size))
-        params = {'scale': h}
+        if h == w == d:
+            params = {'scale': h}
+        else:
+            raise TypeError(
+                f"Unsupported upsampling type with different axes size : {keras_layer.size}"
+            )
     else:
-        raise TypeError("Unsupported upsampling type : {}".format(upsample_type))
+        raise TypeError(f"Unsupported upsampling type : {upsample_type}")
     return _sym.upsampling(insym, **params)
 
 
@@ -317,23 +318,32 @@ def _convert_padding(insym, keras_layer, _):
     padding = keras_layer.padding
     top = left = bottom = right = 0
     if padding_type == 'ZeroPadding2D':
-        if isinstance(padding, int):
-            top = left = bottom = right = padding
-        elif isinstance(padding, tuple):
-            if isinstance(padding[0], int):
-                top, left = padding
-                bottom, right = padding
-            elif isinstance(padding[0], tuple):
-                top, bottom = padding[0]
-                left, right = padding[1]
-            else:
-                raise ValueError("Unrecognized padding option: {}".format(str(padding)))
+        if (
+            not isinstance(padding, int)
+            and isinstance(padding, tuple)
+            and isinstance(padding[0], int)
+        ):
+            top, left = padding
+            bottom, right = padding
+        elif (
+            not isinstance(padding, int)
+            and isinstance(padding, tuple)
+            and isinstance(padding[0], tuple)
+        ):
+            top, bottom = padding[0]
+            left, right = padding[1]
+        elif (
+            not isinstance(padding, int)
+            and isinstance(padding, tuple)
+            or not isinstance(padding, int)
+        ):
+            raise ValueError(f"Unrecognized padding option: {str(padding)}")
         else:
-            raise ValueError("Unrecognized padding option: {}".format(str(padding)))
+            top = left = bottom = right = padding
     elif padding_type == 'ZeroPadding1D':
         raise NotImplementedError("ZeroPadding1D not implemented")
     else:
-        raise ValueError("Unrecognized padding type: {}".format(padding_type))
+        raise ValueError(f"Unrecognized padding type: {padding_type}")
     return _sym.pad(data=insym, pad_width=((0, 0), (0, 0), (top, bottom), (left, right)))
 
 
@@ -421,7 +431,7 @@ _convert_map = {
 def _check_unsupported_layers(model):
     for layer in model.layers:
         if type(layer).__name__ not in _convert_map:
-            raise ValueError("Keras layer {} not supported.".format(type(layer).__name__))
+            raise ValueError(f"Keras layer {type(layer).__name__} not supported.")
 
 
 def keras_op_to_nnvm(insym, keras_layer, outname, symtab):
@@ -442,7 +452,7 @@ def keras_op_to_nnvm(insym, keras_layer, outname, symtab):
         The global symbol table to be updated
     """
     if type(keras_layer).__name__ not in _convert_map:
-        raise NotImplementedError("{} is not supported".format((type(keras_layer).__name__)))
+        raise NotImplementedError(f"{type(keras_layer).__name__} is not supported")
     ret = _convert_map[type(keras_layer).__name__](insym, keras_layer, symtab)
     symtab.set_var(outname, ret)
 
@@ -483,11 +493,11 @@ def from_keras(model):
                        else keras_layer._inbound_nodes if hasattr(keras_layer, '_inbound_nodes') \
                        else None
             if inbound_nodes is None:
-                raise TypeError("Unknown layer type or unsupported Keras version : {}"
-                                .format(keras_layer))
+                raise TypeError(
+                    f"Unknown layer type or unsupported Keras version : {keras_layer}"
+                )
             for node in inbound_nodes:
-                for pred in node.inbound_layers:
-                    predecessors.append(pred.name)
+                predecessors.extend(pred.name for pred in node.inbound_layers)
             if len(predecessors) == 1:
                 insym = symtab.get_var(predecessors[0], must_contain=True)
             else:

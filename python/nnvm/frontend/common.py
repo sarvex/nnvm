@@ -5,10 +5,10 @@ from nnvm import sym as _sym
 from .._base import string_types
 
 def get_nnvm_op(op_name):
-    op = getattr(_sym, op_name)
-    if not op:
-        raise RuntimeError("Unable to map op_name {} to nnvm.sym".format(op_name))
-    return op
+    if op := getattr(_sym, op_name):
+        return op
+    else:
+        raise RuntimeError(f"Unable to map op_name {op_name} to nnvm.sym")
 
 class Renamer(object):
     """A simply renamer for operators.
@@ -73,7 +73,7 @@ class AttrConverter(object):
         if self._custom_check:
             func, msg = self._custom_check
             if not func(attrs):
-                raise RuntimeError("Check failed: {}".format(msg))
+                raise RuntimeError(f"Check failed: {msg}")
         # get new op_name
         if isinstance(self._op_name, string_types):
             op_name = self._op_name
@@ -84,7 +84,7 @@ class AttrConverter(object):
         new_attrs = {}
         for k in attrs.keys():
             if k in self._excludes:
-                raise NotImplementedError("Attribute {} not supported yet.".format(k))
+                raise NotImplementedError(f"Attribute {k} not supported yet.")
             elif k in self._disables:
                 logging.warning("Attribute %s is disabled in nnvm.sym.%s", k, op_name)
             elif k in self._ignores:
@@ -95,15 +95,12 @@ class AttrConverter(object):
                     new_attr = self._required_attr(attrs, k)
                 else:
                     new_attr = attrs.get(k, None)
-                if new_attr is None:
-                    new_attrs[new_name] = defaults
-                else:
-                    new_attrs[new_name] = transform(new_attr)
+                new_attrs[new_name] = defaults if new_attr is None else transform(new_attr)
             else:
                 # copy
                 new_attrs[k] = attrs[k]
         # add extras
-        new_attrs.update(self._extras)
+        new_attrs |= self._extras
         return get_nnvm_op(op_name)(*inputs, **new_attrs)
 
     def _parse_default(self, target):
@@ -119,7 +116,7 @@ class AttrConverter(object):
         else:
             k = None  # should raise
         if not isinstance(k, string_types):
-            msg = "{} is not a valid target, (name, default) expected.".format(target)
+            msg = f"{target} is not a valid target, (name, default) expected."
             raise ValueError(msg)
         return k, v, t
 
@@ -133,7 +130,7 @@ class AttrConverter(object):
         """Wrapper for getting required attributes."""
         assert isinstance(attr, dict)
         if key not in attr:
-            raise AttributeError("Required attribute {} not found.".format(key))
+            raise AttributeError(f"Required attribute {key} not found.")
         return attr[key]
 
 

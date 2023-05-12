@@ -48,45 +48,85 @@ def residual_unit(data, num_filter, stride, dim_match, name, bottle_neck=True):
     if bottle_neck:
         # the same as https://github.com/facebook/fb.resnet.torch#notes,
         # a bit difference with origin paper
-        bn1 = sym.batch_norm(data=data, epsilon=2e-5, name=name + '_bn1')
-        act1 = sym.relu(data=bn1, name=name + '_relu1')
+        bn1 = sym.batch_norm(data=data, epsilon=2e-5, name=f'{name}_bn1')
+        act1 = sym.relu(data=bn1, name=f'{name}_relu1')
         conv1 = sym.conv2d(
-            data=act1, channels=int(num_filter*0.25), kernel_size=(1, 1),
-            strides=(1, 1), padding=(0, 0), use_bias=False, name=name + '_conv1')
-        bn2 = sym.batch_norm(data=conv1, epsilon=2e-5, name=name + '_bn2')
-        act2 = sym.relu(data=bn2, name=name + '_relu2')
+            data=act1,
+            channels=int(num_filter * 0.25),
+            kernel_size=(1, 1),
+            strides=(1, 1),
+            padding=(0, 0),
+            use_bias=False,
+            name=f'{name}_conv1',
+        )
+        bn2 = sym.batch_norm(data=conv1, epsilon=2e-5, name=f'{name}_bn2')
+        act2 = sym.relu(data=bn2, name=f'{name}_relu2')
         conv2 = sym.conv2d(
-            data=act2, channels=int(num_filter*0.25), kernel_size=(3, 3),
-            strides=stride, padding=(1, 1), use_bias=False, name=name + '_conv2')
-        bn3 = sym.batch_norm(data=conv2, epsilon=2e-5, name=name + '_bn3')
-        act3 = sym.relu(data=bn3, name=name + '_relu3')
+            data=act2,
+            channels=int(num_filter * 0.25),
+            kernel_size=(3, 3),
+            strides=stride,
+            padding=(1, 1),
+            use_bias=False,
+            name=f'{name}_conv2',
+        )
+        bn3 = sym.batch_norm(data=conv2, epsilon=2e-5, name=f'{name}_bn3')
+        act3 = sym.relu(data=bn3, name=f'{name}_relu3')
         conv3 = sym.conv2d(
-            data=act3, channels=num_filter, kernel_size=(1, 1),
-            strides=(1, 1), padding=(0, 0), use_bias=False, name=name + '_conv3')
+            data=act3,
+            channels=num_filter,
+            kernel_size=(1, 1),
+            strides=(1, 1),
+            padding=(0, 0),
+            use_bias=False,
+            name=f'{name}_conv3',
+        )
         if dim_match:
             shortcut = data
         else:
             shortcut = sym.conv2d(
-                data=act1, channels=num_filter, kernel_size=(1, 1),
-                strides=stride, use_bias=False, name=name+'_sc')
+                data=act1,
+                channels=num_filter,
+                kernel_size=(1, 1),
+                strides=stride,
+                use_bias=False,
+                name=f'{name}_sc',
+            )
         return sym.elemwise_add(conv3, shortcut)
     else:
-        bn1 = sym.batch_norm(data=data, epsilon=2e-5, name=name + '_bn1')
-        act1 = sym.relu(data=bn1, name=name + '_relu1')
+        bn1 = sym.batch_norm(data=data, epsilon=2e-5, name=f'{name}_bn1')
+        act1 = sym.relu(data=bn1, name=f'{name}_relu1')
         conv1 = sym.conv2d(
-            data=act1, channels=num_filter, kernel_size=(3, 3),
-            strides=stride, padding=(1, 1), use_bias=False, name=name + '_conv1')
-        bn2 = sym.batch_norm(data=conv1, epsilon=2e-5, name=name + '_bn2')
-        act2 = sym.relu(data=bn2, name=name + '_relu2')
+            data=act1,
+            channels=num_filter,
+            kernel_size=(3, 3),
+            strides=stride,
+            padding=(1, 1),
+            use_bias=False,
+            name=f'{name}_conv1',
+        )
+        bn2 = sym.batch_norm(data=conv1, epsilon=2e-5, name=f'{name}_bn2')
+        act2 = sym.relu(data=bn2, name=f'{name}_relu2')
         conv2 = sym.conv2d(
-            data=act2, channels=num_filter, kernel_size=(3, 3),
-            strides=(1, 1), padding=(1, 1), use_bias=False, name=name + '_conv2')
+            data=act2,
+            channels=num_filter,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding=(1, 1),
+            use_bias=False,
+            name=f'{name}_conv2',
+        )
         if dim_match:
             shortcut = data
         else:
             shortcut = sym.conv2d(
-                data=act1, channels=num_filter, kernel_size=(1, 1),
-                strides=stride, use_bias=False, name=name+'_sc')
+                data=act1,
+                channels=num_filter,
+                kernel_size=(1, 1),
+                strides=stride,
+                use_bias=False,
+                name=f'{name}_sc',
+            )
         return sym.elemwise_add(conv2, shortcut)
 
 def resnet(units, num_stages, filter_list, num_classes, image_shape,
@@ -155,7 +195,7 @@ def get_symbol(num_classes, num_layers=50, image_shape=(3, 224, 224), **kwargs):
             filter_list = [16, 16, 32, 64]
             bottle_neck = False
         else:
-            raise ValueError("no experiments done on num_layers {}".format(num_layers))
+            raise ValueError(f"no experiments done on num_layers {num_layers}")
         units = per_unit * num_stages
     else:
         if num_layers >= 50:
@@ -180,7 +220,7 @@ def get_symbol(num_classes, num_layers=50, image_shape=(3, 224, 224), **kwargs):
         elif num_layers == 269:
             units = [3, 30, 48, 8]
         else:
-            raise ValueError("no experiments done on num_layers {}".format(num_layers))
+            raise ValueError(f"no experiments done on num_layers {num_layers}")
 
     return resnet(units=units,
                   num_stages=num_stages,

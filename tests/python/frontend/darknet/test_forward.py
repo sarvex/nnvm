@@ -33,9 +33,9 @@ def _download(url, path, overwrite=False, sizecompare=False):
                 print("exist file got corrupted, downloading", path, " file freshly")
                 _download(url, path, True, False)
                 return
-        print('File {} exists, skip.'.format(path))
+        print(f'File {path} exists, skip.')
         return
-    print('Downloading from url {} to {}'.format(url, path))
+    print(f'Downloading from url {url} to {path}')
     try:
         urllib.request.urlretrieve(url, path)
         print('')
@@ -46,7 +46,7 @@ DARKNET_LIB = 'libdarknet.so'
 DARKNETLIB_URL = 'https://github.com/siju-samuel/darknet/blob/master/lib/' \
                                     + DARKNET_LIB + '?raw=true'
 _download(DARKNETLIB_URL, DARKNET_LIB)
-LIB = __darknetffi__.dlopen('./' + DARKNET_LIB)
+LIB = __darknetffi__.dlopen(f'./{DARKNET_LIB}')
 
 def test_forward(net):
     '''Test network with given input image on both darknet and tvm'''
@@ -87,7 +87,7 @@ def test_forward(net):
         return tvm_out
 
     test_image = 'dog.jpg'
-    img_url = 'https://github.com/siju-samuel/darknet/blob/master/data/' + test_image   +'?raw=true'
+    img_url = f'https://github.com/siju-samuel/darknet/blob/master/data/{test_image}?raw=true'
     _download(img_url, test_image)
     img = LIB.letterbox_image(LIB.load_image_color(test_image.encode('utf-8'), 0, 0), net.w, net.h)
     darknet_output = get_darknet_output(net, img)
@@ -100,10 +100,10 @@ def test_forward(net):
 def test_forward_extraction():
     '''test extraction model'''
     model_name = 'extraction'
-    cfg_name = model_name + '.cfg'
-    weights_name = model_name + '.weights'
-    cfg_url = 'https://github.com/pjreddie/darknet/blob/master/cfg/' + cfg_name + '?raw=true'
-    weights_url = 'http://pjreddie.com/media/files/' + weights_name + '?raw=true'
+    cfg_name = f'{model_name}.cfg'
+    weights_name = f'{model_name}.weights'
+    cfg_url = f'https://github.com/pjreddie/darknet/blob/master/cfg/{cfg_name}?raw=true'
+    weights_url = f'http://pjreddie.com/media/files/{weights_name}?raw=true'
     _download(cfg_url, cfg_name)
     _download(weights_url, weights_name)
     net = LIB.load_network(cfg_name.encode('utf-8'), weights_name.encode('utf-8'), 0)
@@ -113,10 +113,10 @@ def test_forward_extraction():
 def test_forward_alexnet():
     '''test alexnet model'''
     model_name = 'alexnet'
-    cfg_name = model_name + '.cfg'
-    weights_name = model_name + '.weights'
-    cfg_url = 'https://github.com/pjreddie/darknet/blob/master/cfg/' + cfg_name + '?raw=true'
-    weights_url = 'http://pjreddie.com/media/files/' + weights_name + '?raw=true'
+    cfg_name = f'{model_name}.cfg'
+    weights_name = f'{model_name}.weights'
+    cfg_url = f'https://github.com/pjreddie/darknet/blob/master/cfg/{cfg_name}?raw=true'
+    weights_url = f'http://pjreddie.com/media/files/{weights_name}?raw=true'
     _download(cfg_url, cfg_name)
     _download(weights_url, weights_name)
     net = LIB.load_network(cfg_name.encode('utf-8'), weights_name.encode('utf-8'), 0)
@@ -126,10 +126,10 @@ def test_forward_alexnet():
 def test_forward_resnet50():
     '''test resnet50 model'''
     model_name = 'resnet50'
-    cfg_name = model_name + '.cfg'
-    weights_name = model_name + '.weights'
-    cfg_url = 'https://github.com/pjreddie/darknet/blob/master/cfg/' + cfg_name + '?raw=true'
-    weights_url = 'http://pjreddie.com/media/files/' + weights_name + '?raw=true'
+    cfg_name = f'{model_name}.cfg'
+    weights_name = f'{model_name}.weights'
+    cfg_url = f'https://github.com/pjreddie/darknet/blob/master/cfg/{cfg_name}?raw=true'
+    weights_url = f'http://pjreddie.com/media/files/{weights_name}?raw=true'
     _download(cfg_url, cfg_name)
     _download(weights_url, weights_name)
     net = LIB.load_network(cfg_name.encode('utf-8'), weights_name.encode('utf-8'), 0)
@@ -139,10 +139,10 @@ def test_forward_resnet50():
 def test_forward_yolo():
     '''test yolo model'''
     model_name = 'yolo'
-    cfg_name = model_name + '.cfg'
-    weights_name = model_name + '.weights'
-    cfg_url = 'https://github.com/pjreddie/darknet/blob/master/cfg/' + cfg_name + '?raw=true'
-    weights_url = 'http://pjreddie.com/media/files/' + weights_name + '?raw=true'
+    cfg_name = f'{model_name}.cfg'
+    weights_name = f'{model_name}.weights'
+    cfg_url = f'https://github.com/pjreddie/darknet/blob/master/cfg/{cfg_name}?raw=true'
+    weights_url = f'http://pjreddie.com/media/files/{weights_name}?raw=true'
     _download(cfg_url, cfg_name)
     _download(weights_url, weights_name)
     net = LIB.load_network(cfg_name.encode('utf-8'), weights_name.encode('utf-8'), 0)

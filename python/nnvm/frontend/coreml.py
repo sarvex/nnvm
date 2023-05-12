@@ -20,9 +20,7 @@ def NeuralNetworkImageScaler(op, insym, symtab):
 
 
 def NeuralNetworkMeanImage(op, insym, symtab):
-    # this changes the symbol
-    ret = _sym.elemwise_sub(insym, scalar=op.meanImage)
-    return ret
+    return _sym.elemwise_sub(insym, scalar=op.meanImage)
 
 
 def ConvolutionLayerParams(op, insym, symtab):
@@ -62,11 +60,7 @@ def ConvolutionLayerParams(op, insym, symtab):
     else:
         raise NotImplementedError("Valid/Same convolution padding implemented")
 
-    if op.hasBias:
-        pos = [insym, weights, biases]
-    else:
-        pos = [insym, weights]
-
+    pos = [insym, weights, biases] if op.hasBias else [insym, weights]
     if op.isDeconvolution:
         ret = _sym.conv2d_transpose(*pos, **params)
     else:
@@ -79,16 +73,14 @@ def ConvolutionLayerParams(op, insym, symtab):
 
 def BatchnormLayerParams(op, insym, symtab):
     """Get layer of batchnorm parameter"""
-    # this changes the symbol
     if op.instanceNormalization:
         raise NotImplementedError("instance normalization not implemented")
-    else:
-        params = {'gamma':symtab.new_const(list(op.gamma.floatValue)),
-                  'beta':symtab.new_const(list(op.beta.floatValue)),
-                  'moving_mean':symtab.new_const(list(op.mean.floatValue)),
-                  'moving_var': symtab.new_const(list(op.variance.floatValue)),
-                  'epsilon': op.epsilon}
-        return _sym.batch_norm(data=insym, **params)
+    params = {'gamma':symtab.new_const(list(op.gamma.floatValue)),
+              'beta':symtab.new_const(list(op.beta.floatValue)),
+              'moving_mean':symtab.new_const(list(op.mean.floatValue)),
+              'moving_var': symtab.new_const(list(op.variance.floatValue)),
+              'epsilon': op.epsilon}
+    return _sym.batch_norm(data=insym, **params)
 
 def ActivationParams(op, insym, symtab):
     """Get activation parameters"""
@@ -133,7 +125,7 @@ def ActivationParams(op, insym, symtab):
         return _sym.broadcast_mul(_sym.log(_sym.broadcast_add(
             _sym.exp(insym), betasym)), alphasym)
     else:
-        raise NotImplementedError('%s not implemented' % whichActivation)
+        raise NotImplementedError(f'{whichActivation} not implemented')
 
 def ScaleLayerParams(op, insym, symtab):
     """Scale layer params."""
@@ -219,8 +211,7 @@ def ConcatLayerParams(op, insyms, symtab):
         insyms = [insyms]
     if op.sequenceConcat:
         raise NotImplementedError("Sequence Concat not supported")
-    ret = _sym.concatenate(*insyms, axis=1)
-    return ret
+    return _sym.concatenate(*insyms, axis=1)
 
 def FlattenLayerParams(op, insym, symtab):
     if op.mode == 1:
@@ -229,17 +220,16 @@ def FlattenLayerParams(op, insym, symtab):
 
 def PaddingLayerParams(op, insym, symtab):
     """Hacking for padding layer params."""
-    if op.WhichOneof('PaddingType') == 'constant':
-        constant = op.constant
-        if constant.value != 0:
-            raise NotImplementedError("Padding value {} not supported.".format(constant.value))
-        padding = [b.startEdgeSize for b in op.paddingAmounts.borderAmounts]
-        padding2 = [b.endEdgeSize for b in op.paddingAmounts.borderAmounts]
-        for i, j in zip(padding, padding2):
-            assert i == j
-        symtab.set_padding(padding)
-    else:
+    if op.WhichOneof('PaddingType') != 'constant':
         raise NotImplementedError("Only constant padding is supported now.")
+    constant = op.constant
+    if constant.value != 0:
+        raise NotImplementedError(f"Padding value {constant.value} not supported.")
+    padding = [b.startEdgeSize for b in op.paddingAmounts.borderAmounts]
+    padding2 = [b.endEdgeSize for b in op.paddingAmounts.borderAmounts]
+    for i, j in zip(padding, padding2):
+        assert i == j
+    symtab.set_padding(padding)
     return insym
 
 def PermuteLayerParams(op, insym, symtab):
@@ -280,7 +270,7 @@ def coreml_op_to_nnvm(op, inname, outname, symtab):
     """
     classname = type(op).__name__
     if classname not in _convert_map:
-        raise NotImplementedError("%s is not supported" % (classname))
+        raise NotImplementedError(f"{classname} is not supported")
     if isinstance(inname, (str, unicode)):
         insym = symtab.get_var(inname)
     else:

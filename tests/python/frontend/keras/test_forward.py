@@ -40,10 +40,9 @@ def verify_keras_frontend(keras_model):
 
     
 def test_forward_elemwise_add():
-    r = []
     data = keras.layers.Input(shape=(32,32,3))
     x = keras.layers.Conv2D(8, (3, 3), padding="same")(data)
-    r.append(x)
+    r = [x]
     x = keras.layers.Conv2D(8, (3, 3), padding="same")(x)
     r.append(x)
     x = keras.layers.Conv2D(8, (3, 3), padding="same")(x)
